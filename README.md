@@ -1,0 +1,9 @@
+# SGP-based Value Above Last Place Average Player Above Replacement (VAL-PAPAR [val-pa·per] has a nice ring to it)
+
+### High-level overview
+This directory contains the entirety of all of the work done for the fantasy SGP valuation system I created with the Research folder containing a lot of miscellaneous excels files where data exploration and analysis was performed, while the SGPFantasyWorking folder contains the valuation system excel workbook itself along with some necessary ancillary files containing projections, draft cheatsheets outputted by the system, correlation matrices, etc.  The valution system workbook itself can be found in the excel macro-enabled workbook stored at SGPFantasyWorking/LeagueStatsSGPInvest.xlsm. Included in this workbook is all of the pre-season and weekly rest of the season updated player valuations along with my league's historical data, and this workbook will continued to be improved upon and soon will become outputs from a python script that will ensure that this is periodically updated and so that the computations can be abstracted out and sped up.  It was created in the off-season prior to the 2024 MLB season and contains multiple in-season updates in order to continously drive actionable decisions for my team. 
+
+The crux of this valuation system is that it's based off a popular valuation system called Standing Gain Points, but with a twist: I decided to remove the barrier level stats (the stat level required to actually start gaining SGPs i.e. the average player on the last place team) in order to get a more accurate representation of how many standing points players are actually contributing above the last place team rather than just the raw SGPs used traditionally by SGP practicioners.
+
+## In progress:  
+A detailed report of the methodology used and an analysis on the results.  Transition everything to Python for automated web-scraping of real-time data.
