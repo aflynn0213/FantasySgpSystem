@@ -5,24 +5,18 @@ from openpyxl import load_workbook
 import numpy as np
 from processor.SgpProcessor import SgpProcessor 
 
-
+NUM_TEAMS = 12
+NUM_BATS = 13
+NUM_STARTERS = 9
+NUM_RELIEVERS = 3
 class SgpHitters():
     def __init__(self,proj,player_sheet:string) -> None:
         wb = load_workbook('LeagueStatsSGPInvest.xlsm', data_only=True)
         self.proj = proj.split()[0]
         
+        self.stats = pd.read_excel(f'projections/fangraphs_hitting_{self.proj}.xlsx', sheet_name=0)    
+        
         sheet = wb["3YR RUNNING AVG SGP"]
-        sheet2 = wb[player_sheet]
-
-        self.team_opportunities = {
-            'AB' : sheet2['AX2'].value, 
-            'PA' : sheet2['AR2'].value
-        }
-
-        self.team_value = {
-            'OBP_PA' : sheet2['AS2'].value,
-            'SLUG_AB' : sheet2['AY2'].value
-        }
 
         self.replacement_levels = {
             'R': sheet['Q26'].value, 'HR': sheet['R26'].value, 'RBI': sheet['S26'].value, 'SB': sheet['T26'].value,
@@ -34,7 +28,10 @@ class SgpHitters():
             'OBP': sheet['U27'].value, 'SLG': sheet['V27'].value
         }
         
-        self.stats = pd.read_excel('projections/fangraphs_hitting_atc.xlsx', sheet_name=0)
+        self.team_opportunities = {}
+        self.team_value = {}
+        
+        self.team_rate_values_processing()
         
         self.process_hitters_sgp()
         
@@ -49,7 +46,7 @@ class SgpHitters():
 
     def rate_calc_sgp(self,cat:string,opportunities:string):
         if opportunities == 'AB':
-            team_cat = 'SLUG_AB'
+            team_cat = 'SLG_AB'
             player_opps = self.stats[opportunities]
         elif opportunities == 'PA':
             team_cat = 'OBP_PA'
@@ -69,9 +66,27 @@ class SgpHitters():
         for cat, opps in [('OBP', 'PA'), ('SLG', 'AB')]:
             self.sgp_df[f'SGP_{cat}'] = self.rate_calc_sgp(cat,opps)
         
-            
+    def team_rate_values_processing(self):
+        temp_df = pd.read_excel(f"auction_calculator_exports/auc_calc_hitting_{self.proj}.xlsx",sheet_name=0) 
+        temp_df = temp_df.merge(    self.stats[['PlayerId', 'SH', 'AB']],  
+                                    on='PlayerId', 
+                                    how='left'
+                                )
+        print(temp_df)
         
+        for cat,val,cat_val in [('OBP','PA','OBP_PA'), ('SLG','AB','SLG_AB')]: 
+            if val == 'PA':
+                temp_df['PA_SH'] = temp_df['PA'] - temp_df['SH']
+                avg_opps = temp_df['PA_SH'].head(NUM_BATS*NUM_TEAMS).mean()
+            elif val == 'AB':
+                avg_opps = temp_df['AB'].head(NUM_BATS*NUM_TEAMS).mean()
+                
+            avg_team_opps_wo_replacement = avg_opps*(NUM_BATS-1)
+            avg_team_value_wo_replacement = avg_team_opps_wo_replacement*self.replacement_levels[cat]
 
+            self.team_opportunities[val] = avg_team_opps_wo_replacement
+            self.team_value[cat_val] = avg_team_value_wo_replacement
+        
 class SgpPitchers():
     def __init__(self,proj:string,player_sheet:string):
         wb = load_workbook('LeagueStatsSGPInvest.xlsm', data_only=True)
@@ -145,8 +160,8 @@ class SgpPitchers():
         
         for cat, opps in [('ERA','IP'), ('WHIP', 'IP'), ('K/BB', 'BB')]:
             self.sgp_df[f'SGP_{cat}'] = self.rate_calc_sgp(cat,opps)
-        
-    
+ 
+
 if __name__ == "__main__":
     sgp_hit = SgpHitters(proj="ATC HIT '25",player_sheet="SGP ATC HIT '25")
     sgp_pit = SgpPitchers(proj="ATC PIT '25",player_sheet="SGP ATC PIT '25")
