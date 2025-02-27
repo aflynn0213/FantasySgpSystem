@@ -9,17 +9,19 @@ from SgpProcessor import SgpProcessor
 class SgpHitters():
     def __init__(self,proj,player_sheet:string) -> None:
         wb = load_workbook('LeagueStatsSGPInvest.xlsm', data_only=True)
+        self.proj = proj.split()[0]
+        
         sheet = wb["3YR RUNNING AVG SGP"]
         sheet2 = wb[player_sheet]
 
         self.team_opportunities = {
-            'AB' : sheet2['AV2'].value, 
-            'PA' : sheet2['AP2'].value
+            'AB' : sheet2['AX2'].value, 
+            'PA' : sheet2['AR2'].value
         }
 
         self.team_value = {
-            'OBP_PA' : sheet2['AQ2'].value,
-            'SLUG_AB' : sheet2['AW2'].value
+            'OBP_PA' : sheet2['AS2'].value,
+            'SLUG_AB' : sheet2['AY2'].value
         }
 
         self.replacement_levels = {
@@ -36,7 +38,8 @@ class SgpHitters():
         self.process_hitters_sgp()
         self.sgp_df[['Name', 'PlayerId']] = self.stats[['Name', 'PlayerId']]
         self.sgp_df.set_index(['Name','PlayerId'], inplace=True)
-
+        self.sgp_df['PA'] = self.stats['PA'] - self.stats['SH']
+        
     def cat_calc_sgp(self,projection:string):
         return (self.stats[projection] - self.replacement_levels[projection]) / self.cat_stds[projection]
 
@@ -49,8 +52,13 @@ class SgpHitters():
             player_opps = self.stats[opportunities] - self.stats['SH']
 
         player_val = self.stats[cat]*player_opps
+        #print("1", player_val[0])
         team_val_wo_average_player = self.team_value[team_cat]
+        #print("2", team_val_wo_average_player)
         total_opps = self.team_opportunities[opportunities] + player_opps
+        #print("3", self.team_opportunities[opportunities])
+        #print("4", player_opps[0])
+        #print("5", total_opps[0])
         return ((team_val_wo_average_player+player_val)/(total_opps) - self.replacement_levels[cat])/self.cat_stds[cat]
 
     def process_hitters_sgp(self):
@@ -67,6 +75,8 @@ class SgpHitters():
 class SgpPitchers():
     def __init__(self,proj:string,player_sheet:string):
         wb = load_workbook('LeagueStatsSGPInvest.xlsm', data_only=True)
+        self.proj = proj.split()[0].lower()
+        
         sheet = wb["3YR RUNNING AVG SGP"]
         sheet2 = wb[player_sheet]
         
@@ -91,11 +101,13 @@ class SgpPitchers():
             'ERA': sheet['Y27'].value, 'WHIP': sheet['Z27'].value, 'K/BB': sheet['AA27'].value
         }
         
-        self.stats = pd.read_excel('fangraphs_pitching_atc.xlsx', sheet_name=0)
+        self.stats = pd.read_excel(f'fangraphs_pitching_{self.proj}.xlsx', sheet_name=0)
         self.process_pitchers_sgp()
         self.sgp_df[['Name', 'PlayerId']] = self.stats[['Name', 'PlayerId']]
         self.sgp_df.set_index(['Name','PlayerId'], inplace=True)
-
+        self.sgp_df['IP'] = self.stats['IP']
+        self.sgp_df['GS'] = self.stats['GS']
+        
     def cat_calc_sgp(self,projection,cat:string):
         return (projection - self.replacement_levels[cat]) / self.cat_stds[cat]
 
@@ -103,6 +115,7 @@ class SgpPitchers():
         multiplier = 1
         if (cat == 'ERA'):
             multiplier = 9
+            
         team_val_wo_average_player = multiplier*self.team_value[cat]
         total_opps = self.team_opportunities[opps] + self.stats[opps]
         return ((team_val_wo_average_player+projection)/(total_opps) - self.replacement_levels[cat])/self.cat_stds[cat]
@@ -134,8 +147,9 @@ class SgpPitchers():
 if __name__ == "__main__":
     sgp_hit = SgpHitters(proj="ATC HIT '25",player_sheet="SGP ATC HIT '25")
     sgp_pit = SgpPitchers(proj="ATC PIT '25",player_sheet="SGP ATC PIT '25")
-    #sgp_pit_oopsy = SgpPitchers(proj="SGP PIT OOPSY '25",player_sheet="SGP OOPSY PIT '25")
+    sgp_pit_oopsy = SgpPitchers(proj="OOPSY PIT '25",player_sheet="SGP PIT OOPSY '25")
     
-    processor = SgpProcessor(sgp_hit,sgp_pit)    
+    processor_atc = SgpProcessor(sgp_hit,sgp_pit)   
+    processor_oopsy = SgpProcessor(sgp_hit,sgp_pit_oopsy) 
     
 
