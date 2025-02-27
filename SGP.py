@@ -34,7 +34,7 @@ class SgpHitters():
             'OBP': sheet['U27'].value, 'SLG': sheet['V27'].value
         }
         
-        self.stats = pd.read_excel('fangraphs_hitting_atc.xlsx', sheet_name=0)
+        self.stats = pd.read_excel('projections/fangraphs_hitting_atc.xlsx', sheet_name=0)
         self.process_hitters_sgp()
         self.sgp_df[['Name', 'PlayerId']] = self.stats[['Name', 'PlayerId']]
         self.sgp_df.set_index(['Name','PlayerId'], inplace=True)
@@ -101,7 +101,7 @@ class SgpPitchers():
             'ERA': sheet['Y27'].value, 'WHIP': sheet['Z27'].value, 'K/BB': sheet['AA27'].value
         }
         
-        self.stats = pd.read_excel(f'fangraphs_pitching_{self.proj}.xlsx', sheet_name=0)
+        self.stats = pd.read_excel(f'projections/fangraphs_pitching_{self.proj}.xlsx', sheet_name=0)
         self.process_pitchers_sgp()
         self.sgp_df[['Name', 'PlayerId']] = self.stats[['Name', 'PlayerId']]
         self.sgp_df.set_index(['Name','PlayerId'], inplace=True)
