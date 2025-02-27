@@ -2,10 +2,24 @@ import pandas as pd
 import numpy as np
 class SgpProcessor:
     def __init__(self, sgp_hitters, sgp_pitchers):
-        self.sgp_hitters = sgp_hitters.sgp_df.copy()
-        self.sgp_pitchers = sgp_pitchers.sgp_df.copy()
+
+        print("[*] Initializing SGP Processor...")
+        
+        temp_hitters = sgp_hitters.sgp_df.copy()
+        temp_pitchers = sgp_pitchers.sgp_df.copy()
         self.suffix = f"{sgp_hitters.proj}_{sgp_pitchers.proj}"
-        self.export_sgp()
+
+        # Prepare data immediately and store results
+        self.hitters_df = self.prepare_data(temp_hitters, 'Hitter')
+        self.pitchers_df = self.prepare_data(temp_pitchers, 'Pitcher')
+
+        # Combine for final rankings
+        self.combined_df = pd.concat([
+            self.hitters_df[['Name', 'PlayerId', 'Total_SGP', 'RL', 'VAR']],
+            self.pitchers_df[['Name', 'PlayerId', 'Total_SGP', 'RL', 'VAR']]
+        ]).sort_values(by='VAR', ascending=False)
+        
+        print("[✔] SGP Data Prepared!")
     
     def prepare_data(self, df, player_type):
         df = df.reset_index()
@@ -35,24 +49,13 @@ class SgpProcessor:
         return df
     
     def export_sgp(self):
-        # Prepare hitter data
-        hitters_df = self.prepare_data(self.sgp_hitters, 'Hitter')
-        pitchers_df = self.prepare_data(self.sgp_pitchers, 'Pitcher')
-        
-        # Select relevant columns
-        hitters_export = hitters_df[['Name', 'PlayerId', 'PA', 'SGP_R', 'SGP_HR', 'SGP_RBI', 'SGP_SB', 'SGP_OBP', 'SGP_SLG','Total_SGP_wSB', 'Total_SGP', 'RL', 'VAR']]
-        pitchers_export = pitchers_df[['Name', 'PlayerId', 'IP', 'SGP_SO', 'SGP_QS', 'SGP_SV_HLD', 'SGP_ERA', 'SGP_WHIP', 'SGP_K/BB', 'Total_SGP', 'RL', 'VAR']]
-        
-        # Create combined data for ATC pitchers and all hitters
-        combined_export = pd.concat([hitters_export[['Name', 'PlayerId', 'Total_SGP', 'RL', 'VAR']],
-                                     pitchers_export[['Name', 'PlayerId', 'Total_SGP', 'RL', 'VAR']]])
-        
-        combined_export = combined_export.sort_values(by='VAR', ascending=False)
+        print("[*] Exporting SGP Results...")
         
         file_name = f"results/SGP_Results_{self.suffix}.xlsx"
         
-        # Export to Excel
         with pd.ExcelWriter(file_name) as writer:
-            hitters_export.to_excel(writer, sheet_name='Hitters', index=False)
-            pitchers_export.to_excel(writer, sheet_name='Pitchers', index=False)
-            combined_export.to_excel(writer, sheet_name='Combined', index=False)
+            self.hitters_df[['Name', 'PlayerId', 'PA', 'SGP_R', 'SGP_HR', 'SGP_RBI', 'SGP_SB', 'SGP_OBP', 'SGP_SLG', 'Total_SGP_wSB', 'Total_SGP', 'RL', 'VAR']].to_excel(writer, sheet_name='Hitters', index=False)
+            self.pitchers_df[['Name', 'PlayerId', 'IP', 'SGP_SO', 'SGP_QS', 'SGP_SV_HLD', 'SGP_ERA', 'SGP_WHIP', 'SGP_K/BB', 'Total_SGP', 'RL', 'VAR']].to_excel(writer, sheet_name='Pitchers', index=False)
+            self.combined_df.to_excel(writer, sheet_name='Combined', index=False)
+        
+        print(f"[✔] Exported SGP Results to {file_name}")

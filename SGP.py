@@ -56,13 +56,9 @@ class SgpHitters():
             player_opps = self.stats[opportunities] - self.stats['SH']
 
         player_val = self.stats[cat]*player_opps
-        #print("1", player_val[0])
         team_val_wo_average_player = self.team_value[team_cat]
-        #print("2", team_val_wo_average_player)
         total_opps = self.team_opportunities[opportunities] + player_opps
-        #print("3", self.team_opportunities[opportunities])
-        #print("4", player_opps[0])
-        #print("5", total_opps[0])
+
         return ((team_val_wo_average_player+player_val)/(total_opps) - self.replacement_levels[cat])/self.cat_stds[cat]
 
     def process_hitters_sgp(self):
@@ -157,6 +153,10 @@ if __name__ == "__main__":
     sgp_pit_oopsy = SgpPitchers(proj="OOPSY PIT '25",player_sheet="SGP PIT OOPSY '25")
     
     processor_atc = SgpProcessor(sgp_hit,sgp_pit)   
-    processor_oopsy = SgpProcessor(sgp_hit,sgp_pit_oopsy) 
+    processor_oopsy = SgpProcessor(sgp_hit,sgp_pit_oopsy)
+    
+    # Write to excel results files for sorted rankings 
+    processor_atc.export_sgp()
+    processor_oopsy.export_sgp() 
     
 
