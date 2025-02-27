@@ -1,72 +1,116 @@
 import os
 import time
-import requests
 import pandas as pd
-from bs4 import BeautifulSoup
+from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.by import By
+from selenium.webdriver.common.keys import Keys
+from webdriver_manager.chrome import ChromeDriverManager
 
-def get_fangraphs_csv(url, save_path):
-    """Scrape the Export button URL and download the CSV file."""
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36"
-    }
+# FANGRAPHS LOGIN CREDENTIALS
+FANGRAPHS_USERNAME = "aflynn0213"
+FANGRAPHS_PASSWORD = "funfunfun123!"
 
-    # Step 1: Get the HTML of the page
-    response = requests.get(url, headers=headers)
-    if response.status_code != 200:
-        print(f"Failed to load page: {url}")
-        return
+DOWNLOAD_FOLDER = os.path.join(os.getenv("USERPROFILE"), "Downloads")
 
-    # Step 2: Parse the HTML with BeautifulSoup
-    soup = BeautifulSoup(response.text, "lxml")
-
-    # Step 3: Look for the "Export Data" link
-    export_link = None
-    for link in soup.find_all("a", href=True):
-        if "csv" in link["href"].lower():
-            export_link = link["href"]
-            break
-
-    if not export_link:
-        print("Could not find CSV export link on the page.")
-        return
-
-    # Convert relative URL to absolute URL if necessary
-    if export_link.startswith("/"):
-        base_url = "https://www.fangraphs.com"
-        export_link = base_url + export_link
-
-    print(f"Downloading CSV from: {export_link}")
-
-    # Step 4: Download the CSV file
-    csv_response = requests.get(export_link, headers=headers)
-    if csv_response.status_code != 200:
-        print("Failed to download CSV file.")
-        return
-
-    # Step 5: Save the CSV file
-    csv_path = save_path.replace(".xlsx", ".csv")
-    with open(csv_path, "wb") as f:
-        f.write(csv_response.content)
-
-    # Step 6: Convert CSV to Excel
-    df = pd.read_csv(csv_path)
-    df.to_excel(save_path, index=False)
-    os.remove(csv_path)  # Remove original CSV
-
-    print(f"File saved: {save_path}")
-
-
-# URLs for FanGraphs projections
-urls = {
-    "fangraphs_hitting_atc": "https://www.fangraphs.com/projections?type=atc&stats=bat&pos=all&team=0&players=0&lg=all&z=1738576938&pageitems=30&statgroup=fantasy&fantasypreset=dashboard",
-    "fangraphs_pitching_atc": "https://www.fangraphs.com/projections?type=atc&stats=pit&pos=&team=0&players=0&lg=all&z=1738576938&sortcol=&sortdir=desc&pageitems=30&statgroup=fantasy&fantasypreset=dashboard",
+# URLs
+LOGIN_URL = "https://blogs.fangraphs.com/wp-login.php"
+PROJECTIONS_URLS = {
+    "fangraphs_hitting_atc": "https://www.fangraphs.com/projections?type=atc&stats=bat&pos=all",
+    "fangraphs_pitching_atc": "https://www.fangraphs.com/projections?type=atc&stats=pit&pos=all",
+    "fangraphs_pitching_oopsy": "https://www.fangraphs.com/projections?type=oopsy&stats=pit&pos=all",
 }
 
-# Save directory
-save_folder = os.path.expanduser("~/repos/FantasyPlayerEvaluation/SGPFantasyWorking")
-os.makedirs(save_folder, exist_ok=True)
+# Where to save files
+SAVE_FOLDER = os.path.expanduser("~/repos/Baseball/FantasySgpSystem/projections")
+os.makedirs(SAVE_FOLDER, exist_ok=True)
 
-# Download each dataset
-for filename, url in urls.items():
-    save_path = os.path.join(save_folder, f"{filename}.xlsx")
-    get_fangraphs_csv(url, save_path)
+def login_to_fangraphs(driver):
+    """Logs into FanGraphs."""
+    print("[*] Navigating to FanGraphs login page...")
+    driver.get(LOGIN_URL)
+    time.sleep(3)
+
+    # username
+    print("[*] Entering username...")
+    username_field = driver.find_element(By.ID, "user_login")
+    username_field.send_keys(FANGRAPHS_USERNAME)
+
+    # password
+    print("[*] Entering password...")
+    password_field = driver.find_element(By.ID, "user_pass")
+    password_field.send_keys(FANGRAPHS_PASSWORD)
+    password_field.send_keys(Keys.RETURN)  # Press Enter to log in
+
+    time.sleep(5)  # Wait for login to process
+    print("[✔] Successfully logged in!")
+
+def download_fangraphs_csv(driver, url, save_path):
+    """Navigates to FanGraphs projections page, clicks 'Export Data', and downloads CSV."""
+    print(f"[*] Navigating to: {url}")
+    driver.get(url)
+    time.sleep(5)
+
+    try:
+        # Find and click the "Export Data" button
+        print("[*] Searching for 'Export Data' button...")
+        export_button = driver.find_element(By.LINK_TEXT, "Export Data")
+        
+        # Scroll to the button (optional)
+        driver.execute_script("arguments[0].scrollIntoView();", export_button)
+        time.sleep(1)
+
+        # Click using JavaScript to bypass UI blocking issues
+        print("[✔] Clicking 'Export Data' button via JavaScript...")
+        driver.execute_script("arguments[0].click();", export_button)
+    except Exception as e:
+        print(f"[ERROR] Could not find or click the 'Export Data' button: {e}")
+        return
+
+    # Wait for the file to download
+    time.sleep(10)  
+
+    # Find the latest downloaded file
+    files = sorted(
+        os.listdir(DOWNLOAD_FOLDER), 
+        key=lambda x: os.path.getmtime(os.path.join(DOWNLOAD_FOLDER, x)), 
+        reverse=True
+    )
+    
+    csv_file = next((f for f in files if f.endswith(".csv")), None)
+
+    if not csv_file:
+        print("[ERROR] No CSV file found after download.")
+        return
+
+    csv_path = os.path.join(DOWNLOAD_FOLDER, csv_file)
+    print(f"[✔] Downloaded file: {csv_path}")
+
+    # Convert CSV to Excel
+    df = pd.read_csv(csv_path)
+    df.to_excel(save_path, index=False)
+    os.remove(csv_path)
+    print(f"[✔] File saved: {save_path}")
+
+def main():
+    options = Options()
+    options.add_argument("--start-maximized")
+
+    # Set up WebDriver
+    driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+
+    # Log in to FanGraphs
+    login_to_fangraphs(driver)
+
+    # Download each dataset
+    for filename, url in PROJECTIONS_URLS.items():
+        print(f"\n[⚡] Processing: {filename}")
+        save_path = os.path.join(SAVE_FOLDER, f"{filename}.xlsx")
+        download_fangraphs_csv(driver, url, save_path)
+
+    print("\n[✔] Done!")
+    driver.quit()
+
+if __name__ == "__main__":
+    main()
