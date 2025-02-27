@@ -3,7 +3,7 @@ import string
 import pandas as pd
 from openpyxl import load_workbook
 import numpy as np
-from SgpProcessor import SgpProcessor
+from processor.SgpProcessor import SgpProcessor 
 
 
 class SgpHitters():
@@ -35,10 +35,14 @@ class SgpHitters():
         }
         
         self.stats = pd.read_excel('projections/fangraphs_hitting_atc.xlsx', sheet_name=0)
+        
         self.process_hitters_sgp()
+        
+        self.sgp_df['PA'] = self.stats['PA'] - self.stats['SH']
+        
         self.sgp_df[['Name', 'PlayerId']] = self.stats[['Name', 'PlayerId']]
         self.sgp_df.set_index(['Name','PlayerId'], inplace=True)
-        self.sgp_df['PA'] = self.stats['PA'] - self.stats['SH']
+        
         
     def cat_calc_sgp(self,projection:string):
         return (self.stats[projection] - self.replacement_levels[projection]) / self.cat_stds[projection]
@@ -102,11 +106,14 @@ class SgpPitchers():
         }
         
         self.stats = pd.read_excel(f'projections/fangraphs_pitching_{self.proj}.xlsx', sheet_name=0)
+        
         self.process_pitchers_sgp()
-        self.sgp_df[['Name', 'PlayerId']] = self.stats[['Name', 'PlayerId']]
-        self.sgp_df.set_index(['Name','PlayerId'], inplace=True)
+        
         self.sgp_df['IP'] = self.stats['IP']
         self.sgp_df['GS'] = self.stats['GS']
+        
+        self.sgp_df[['Name', 'PlayerId']] = self.stats[['Name', 'PlayerId']]
+        self.sgp_df.set_index(['Name','PlayerId'], inplace=True)
         
     def cat_calc_sgp(self,projection,cat:string):
         return (projection - self.replacement_levels[cat]) / self.cat_stds[cat]
