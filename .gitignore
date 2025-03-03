@@ -4,3 +4,5 @@ __pycache__/
 processor/__pycache__/
 LeagueStatsSGPInvest.xlsx
 sgp_venv/
+.env
+*.xlsx

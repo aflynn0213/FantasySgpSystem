@@ -1,25 +1,28 @@
-from flask import Flask, render_template
+from flask import Flask, render_template, request
 import pandas as pd
 from processor.SgpProcessor import SgpProcessor  # Import your SGPProcessor class
 from SGP import SgpHitters, SgpPitchers  # Import your hitter & pitcher classes
 
 app = Flask(__name__)
 
-# 🔹 Global variable to store SGP results
+# Global variable to store SGP results
 sgp_results = None  # Stores {'hitters': df, 'pitchers': df, 'combined': df}
+sgp_results_oops = None
 
 def generate_sgp():
     """Runs the SGP processing and stores results globally."""
-    global sgp_results
+    global sgp_results, sgp_results_oops
     print("[*] Running SGP Processor...")
 
     # Initialize hitter & pitcher objects
-    sgp_hit = SgpHitters(proj="ATC HIT '25", player_sheet="SGP ATC HIT '25")
-    sgp_pit = SgpPitchers(proj="ATC PIT '25", player_sheet="SGP ATC PIT '25")
-
+    sgp_hit = SgpHitters(proj='atc')
+    sgp_pit = SgpPitchers(proj='atc')
+    sgp_pit_oops = SgpPitchers(proj='oopsy')
+    
     # Process SGP rankings
     processor = SgpProcessor(sgp_hit, sgp_pit)
-
+    processor_oops = SgpProcessor(sgp_hit,sgp_pit_oops)
+    
     # Store results in global variable
     sgp_results = {
         'hitters': processor.hitters_df,
@@ -27,18 +30,36 @@ def generate_sgp():
         'combined': processor.combined_df
     }
     
+    sgp_results_oops = {
+        'hitters': processor_oops.hitters_df,
+        'pitchers': processor_oops.pitchers_df,
+        'combined': processor_oops.combined_df
+    }   
+    
     print("[✔] SGP Processing Completed!")
 
 @app.route('/')
 def home():
+    global sgp_results, sgp_results_oops
+    
     """Main page displaying SGP results."""
-    if sgp_results is None:
+    if sgp_results is None or sgp_results_oops  is None:
         generate_sgp()  # Run if not already processed
 
+    valid_projections = ['atc', 'oopsy']
+    selected_proj = request.args.get('projection', 'atc')  # Defaults to 'atc'
+
+    if selected_proj not in valid_projections:
+        selected_proj = 'atc'  # Fallback to 'atc' if invalid
+
+    # Choose correct dataset based on user selection
+    results = sgp_results if selected_proj == 'atc' else sgp_results_oops
+
     return render_template('index.html',
-                           hitters_html=sgp_results['hitters'].to_html(classes="table table-striped", index=False),
-                           pitchers_html=sgp_results['pitchers'].to_html(classes="table table-striped", index=False),
-                           combined_html=sgp_results['combined'].to_html(classes="table table-striped", index=False))
+                           selected_proj=selected_proj,
+                           hitters_html=results['hitters'].to_html(classes="table table-striped", index=False),
+                           pitchers_html=results['pitchers'].to_html(classes="table table-striped", index=False),
+                           combined_html=results['combined'].to_html(classes="table table-striped", index=False))
 
 @app.route('/refresh')
 def refresh():

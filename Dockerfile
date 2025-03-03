@@ -4,6 +4,32 @@ FROM python:3.12
 # Set the working directory inside the container
 WORKDIR /FantasySgpSystem
 
+# Install dependencies for Chrome & Selenium
+RUN apt-get update && apt-get install -y \
+    wget \
+    curl \
+    unzip \
+    ca-certificates \
+    fonts-liberation \
+    libappindicator3-1 \
+    libasound2 \
+    libgbm-dev \
+    libgtk-3-0 \
+    libnss3 \
+    lsb-release \
+    xdg-utils \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Google Chrome
+RUN wget -q https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb \
+    && dpkg -i google-chrome-stable_current_amd64.deb || apt-get -fy install
+
+# Install ChromeDriver (ensure version compatibility with Chrome)
+RUN wget -q https://chromedriver.storage.googleapis.com/114.0.5735.90/chromedriver_linux64.zip \
+    && unzip chromedriver_linux64.zip \
+    && mv chromedriver /usr/local/bin/ \
+    && chmod +x /usr/local/bin/chromedriver
+    
 # Copy the requirements file into the container
 COPY requirements.txt .
 
