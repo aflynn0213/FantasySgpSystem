@@ -7,12 +7,21 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from webdriver_manager.chrome import ChromeDriverManager
+from dotenv import load_dotenv
 
-# FANGRAPHS LOGIN CREDENTIALS
-FANGRAPHS_USERNAME = "aflynn0213"
-FANGRAPHS_PASSWORD = "funfunfun123!"
+# Load environment variables from a .env file
+load_dotenv()
 
-DOWNLOAD_FOLDER = os.path.join(os.getenv("USERPROFILE"), "Downloads")
+FANGRAPHS_USERNAME = os.getenv("FANGRAPHS_USERNAME")
+FANGRAPHS_PASSWORD = os.getenv("FANGRAPHS_PASSWORD")
+
+if not FANGRAPHS_USERNAME or not FANGRAPHS_PASSWORD:
+    raise ValueError("FanGraphs credentials are missing! Set them in .env or environment variables.")
+
+HOME_DIR = os.path.expanduser("~")
+
+# Set the downloads folder
+DOWNLOAD_FOLDER = os.path.join(HOME_DIR, "Downloads")
 
 # URLs
 LOGIN_URL = "https://blogs.fangraphs.com/wp-login.php"
@@ -25,12 +34,17 @@ PROJECTIONS_URLS = {
     "auc_calc_pitching_oopsy":  "https://www.fangraphs.com/fantasy-tools/auction-calculator?teams=12&lg=MLB&dollars=260&mb=1&mp=20&msp=10&mrp=1&type=pit&players=&proj=oopsy&split=65&points=c%7C1%2C2%2C3%2C4%2C5%2C6%7C13%2C14%2C2%2C3%2C4%2C8&rep=0&drp=0&pp=C%2C2B%2COF%2CSS%2C3B%2C1B&pos=1%2C1%2C1%2C1%2C5%2C1%2C1%2C1%2C0%2C1%2C9%2C3%2C0%2C1%2C0&sort=&view=0"
 }
 
+BASE_DIR = os.path.abspath(os.getcwd())
+
 # Where to save files
-SAVE_FOLDER = os.path.expanduser("~/repos/Baseball/FantasySgpSystem/projections")
-SAVE_FOLDER_AUC = os.path.expanduser("~/repos/Baseball/FantasySgpSystem/auction_calculator_exports")
+SAVE_FOLDER = os.path.join(BASE_DIR, "projections")
+SAVE_FOLDER_AUC = os.path.join(BASE_DIR,"auction_calculator_exports")
+
 os.makedirs(SAVE_FOLDER, exist_ok=True)
+os.makedirs(SAVE_FOLDER_AUC,exist_ok=True)
 
 def login_to_fangraphs(driver):
+        
     """Logs into FanGraphs."""
     print("[*] Navigating to FanGraphs login page...")
     driver.get(LOGIN_URL)
@@ -98,11 +112,26 @@ def download_fangraphs_csv(driver, url, save_path):
     print(f"[✔] File saved: {save_path}")
 
 def main():
-    options = Options()
-    options.add_argument("--start-maximized")
+    # **Detect if running inside Docker**
+    running_in_docker = os.path.exists("/.dockerenv")
 
-    # Set up WebDriver
-    driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+    if running_in_docker:
+        options = Options()
+        options.add_argument("--headless")  # Run in headless mode
+        options.add_argument("--no-sandbox")  # Required for Docker
+        options.add_argument("--disable-dev-shm-usage")  # Prevent memory issues in Docker
+        options.add_argument("--disable-gpu")  # Disable GPU (fixes issues in some environments)
+        options.add_argument("--remote-debugging-port=9222")  # Needed for some debugging
+
+        print("[*] Running inside Docker, using pre-installed ChromeDriver...")
+        driver_path = "/usr/local/bin/chromedriver"  # Path inside Docker
+        driver = webdriver.Chrome(service=Service(driver_path), options=options)
+    else:    
+        options = Options()
+        options.add_argument("--start-maximized")
+
+        # Set up WebDriver
+        driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
 
     # Log in to FanGraphs
     login_to_fangraphs(driver)
