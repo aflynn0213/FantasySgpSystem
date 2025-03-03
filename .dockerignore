@@ -1,0 +1,23 @@
+# 🔹 Ignore the virtual environment (since we install dependencies in Docker)
+sgp_venv/
+
+# 🔹 Ignore compiled Python files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# 🔹 Ignore OS/system files
+.DS_Store
+Thumbs.db
+
+# 🔹 Ignore environment variables & secrets
+.env
+*.env
+
+# 🔹 Ignore logs & temp files
+*.log
+*.tmp
+
+# 🔹 Ignore unnecessary build files
+*.swp

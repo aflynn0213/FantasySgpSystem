@@ -3,3 +3,4 @@ __pycache__/
 *.pyo
 processor/__pycache__/
 LeagueStatsSGPInvest.xlsx
+sgp_venv/

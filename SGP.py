@@ -72,7 +72,6 @@ class SgpHitters():
                                     on='PlayerId', 
                                     how='left'
                                 )
-        print(temp_df)
         
         for cat,val,cat_val in [('OBP','PA','OBP_PA'), ('SLG','AB','SLG_AB')]: 
             if val == 'PA':
@@ -158,7 +157,6 @@ class SgpPitchers():
     def team_rate_values_processing(self):
         temp_df = pd.read_excel(f"auction_calculator_exports/auc_calc_pitching_{self.proj}.xlsx",sheet_name=0) 
         
-        print(temp_df)
         multiplier = 1
         
         for cat,val in [('ERA','IP'), ('WHIP','IP'), ('K/BB', 'BB')]: 
