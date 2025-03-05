@@ -5,4 +5,5 @@ processor/__pycache__/
 LeagueStatsSGPInvest.xlsx
 sgp_venv/
 .env
-*.xlsx
+auction_calculator_exports/
+projections/
