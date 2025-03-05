@@ -1,5 +1,7 @@
 import pandas as pd
 import numpy as np
+import os
+
 class SgpProcessor:
     def __init__(self, sgp_hitters, sgp_pitchers):
 
@@ -50,6 +52,9 @@ class SgpProcessor:
     
     def export_sgp(self):
         print("[*] Exporting SGP Results...")
+        
+        SAVE_FOLDER = os.path.join(os.getcwd(), "results")
+        os.makedirs(SAVE_FOLDER,exist_ok=True)
         
         file_name = f"results/SGP_Results_{self.suffix}.xlsx"
         

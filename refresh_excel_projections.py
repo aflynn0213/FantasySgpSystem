@@ -1,6 +1,7 @@
 import os
 import time
 import pandas as pd
+import requests
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
@@ -8,6 +9,8 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from webdriver_manager.chrome import ChromeDriverManager
 from dotenv import load_dotenv
+
+SELENIUM_GRID_URL = "http://selenium:4444/wd/hub"
 
 # Load environment variables from a .env file
 load_dotenv()
@@ -111,23 +114,42 @@ def download_fangraphs_csv(driver, url, save_path):
     os.remove(csv_path)
     print(f"[✔] File saved: {save_path}")
 
+def wait_for_selenium(timeout=1500):
+    """Wait for Selenium Grid to be available."""
+    print("[*] Waiting for Selenium Grid to be ready...")
+    for i in range(timeout):
+        try:
+            response = requests.get(SELENIUM_GRID_URL)
+            if response.status_code == 200 and response.json().get("value", {}).get("ready", False):
+                print("[✔] Selenium Grid is ready!")
+                return
+        except requests.exceptions.RequestException:
+            pass  # Keep trying
+        
+        print(f"[*] Selenium not ready, retrying... ({i+1}/{timeout})")
+        time.sleep(1)  # Wait 1 second before retrying
+
+    print("[ERROR] Selenium did not start in time. Exiting...")
+    exit(1)
+    
 def main():
     # **Detect if running inside Docker**
     running_in_docker = os.path.exists("/.dockerenv")
-
+    options = Options()
+    
     if running_in_docker:
+        wait_for_selenium()
+        
         options = Options()
-        options.add_argument("--headless")  # Run in headless mode
-        options.add_argument("--no-sandbox")  # Required for Docker
-        options.add_argument("--disable-dev-shm-usage")  # Prevent memory issues in Docker
-        options.add_argument("--disable-gpu")  # Disable GPU (fixes issues in some environments)
-        options.add_argument("--remote-debugging-port=9222")  # Needed for some debugging
+        options.add_argument("--headless=new")  
+        options.add_argument("--no-sandbox")  # Required inside Docker
+        options.add_argument("--disable-dev-shm-usage")  
+        options.add_argument("--disable-gpu")  # Disable GPU acceleration
 
         print("[*] Running inside Docker, using pre-installed ChromeDriver...")
-        driver_path = "/usr/local/bin/chromedriver"  # Path inside Docker
-        driver = webdriver.Chrome(service=Service(driver_path), options=options)
-    else:    
-        options = Options()
+        driver = webdriver.Remote(command_executor=SELENIUM_GRID_URL, options=options)
+        
+    else:
         options.add_argument("--start-maximized")
 
         # Set up WebDriver
