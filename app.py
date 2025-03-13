@@ -1,7 +1,8 @@
 from flask import Flask, render_template, request
 import pandas as pd
 from processor.SgpProcessor import SgpProcessor  # Import your SGPProcessor class
-from SGP import SgpHitters, SgpPitchers  # Import your hitter & pitcher classes
+from Sgp.SgpHitters import SgpHitters # Import your hitter & pitcher classes
+from Sgp.SgpPitchers import SgpPitchers
 
 app = Flask(__name__)
 
@@ -17,7 +18,7 @@ def generate_sgp():
     # Initialize hitter & pitcher objects
     sgp_hit = SgpHitters(proj='atc')
     sgp_pit = SgpPitchers(proj='atc')
-    sgp_pit_oops = SgpPitchers(proj='oopsy')
+    sgp_pit_oops = SgpPitchers(proj='oopsy',ip_adj='atc')
     
     # Process SGP rankings
     processor = SgpProcessor(sgp_hit, sgp_pit)
