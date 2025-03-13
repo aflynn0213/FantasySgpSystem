@@ -9,14 +9,15 @@ if __name__ == "__main__":
     parser.add_argument("-b", "--hitter_proj", type=str, required=True, help="Projection system for hitters (e.g., atc)")
     parser.add_argument("-p", "--pitcher_proj", type=str, required=True, help="Projection system for pitchers (e.g., atc)")
     parser.add_argument("-a", "--ip_adj", type=str, default=None, help="(Optional) Projection system to use for IP adjustment for pitchers")
-
+    parser.add_argument("-sb", "--sb_included", type=bool, default=False, help="(Optional) Whether or not to include stolen bases")
+    
     args = parser.parse_args()
     
     start_total_time = time.time()
     print("[*] Starting SGP processing...")
 
     print("[*] Processing hitters...")
-    sgp_hit = SgpHitters(proj=args.hitter_proj)
+    sgp_hit = SgpHitters(proj=args.hitter_proj,sb_included=args.sb_included)
     
     print("[*] Processing pitchers...")
     sgp_pit_adj = SgpPitchers(proj=args.pitcher_proj, ip_adj=args.ip_adj)
@@ -24,5 +25,5 @@ if __name__ == "__main__":
     print("[*] Running SgpProcessor for projections...")
     processor = SgpProcessor(sgp_hit, sgp_pit_adj)
 
-    processor.export_sgp()
+    processor.export_sgp(sb=args.sb_included)
     print(f"[✔] Total execution time: {time.time() - start_total_time:.2f} seconds.")
