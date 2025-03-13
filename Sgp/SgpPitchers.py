@@ -48,7 +48,7 @@ class SgpPitchers(SgpBase):
         elif(cat=="K/BB"):
             val = self.stats['SO']
         else:
-            return NULL
+            raise NotImplementedError("Category outside of the league's pitching categories used as input to rate_calc_sgp")
         
         multiplier = 1
         if (cat == 'ERA'):
