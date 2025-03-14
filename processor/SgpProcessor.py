@@ -16,7 +16,7 @@ class SgpProcessor:
         self.suffix = f"{sgp_hitters.proj}_{sgp_pitchers.proj}"
 
         print("[*] Preparing hitter data...")
-        self.hitters_df = self.prepare_data(temp_hitters, 'Hitter',temp_auc_hit)
+        self.hitters_df = self.prepare_data(temp_hitters, 'Hitter', sgp_hitters.sb_included, temp_auc_hit)
         print("[*] Preparing pitcher data...")
         self.pitchers_df = self.prepare_data(temp_pitchers, 'Pitcher')
                                                      
@@ -28,10 +28,14 @@ class SgpProcessor:
         
         print("[✔] SGP Data Prepared!")
     
-    def prepare_data(self, df, player_type, auc_calc = None):
+    def prepare_data(self, df, player_type, sb_included=False, auc_calc = None):
         df = df.reset_index()
         if (player_type=='Hitter'):
-            df['Total_SGP'] = df.iloc[:, [2,3,4,6,7]].sum(axis=1)
+            cols_included = list(range(2,8))
+            if (not sb_included):
+                cols_included.remove(5)
+            
+            df['Total_SGP'] = df.iloc[:, cols_included].sum(axis=1)
             df['Total_SGP_wSB'] = df.iloc[:, 2:8].sum(axis=1)
             
             df = df.sort_values(by="Total_SGP", ascending=False).reset_index()
@@ -194,13 +198,14 @@ class SgpProcessor:
         print("[✔] Replacement level calculation complete!")
         return df
     
-    def export_sgp(self):
+    def export_sgp(self,sb):
         print("[*] Exporting SGP Results...")
         
         SAVE_FOLDER = os.path.join(os.getcwd(), "results")
         os.makedirs(SAVE_FOLDER,exist_ok=True)
         
-        file_name = f"results/SGP_Results_{self.suffix}.xlsx"
+        sb_string = "_sb_included" if sb else ""
+        file_name = f"results/SGP_Results_{self.suffix}{sb_string}.xlsx"
         
         with pd.ExcelWriter(file_name) as writer:
             self.hitters_df[['Name', 'PlayerId', 'PA', 'SGP_R', 'SGP_HR', 'SGP_RBI', 'SGP_SB', 'SGP_OBP', 'SGP_SLG', 'Total_SGP_wSB', 'Total_SGP', 'RL', 'VAR']].to_excel(writer, sheet_name='Hitters', index=False)

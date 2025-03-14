@@ -7,8 +7,10 @@ NUM_TEAMS = 12
 NUM_BATS = 13
 
 class SgpHitters(SgpBase):
-    def __init__(self,proj) -> None:
+    def __init__(self,proj,sb_included:False) -> None:
         super().__init__(proj,"hitting")
+        
+        self.sb_included = sb_included
         
         print("[*] Loading replacement levels and category standard deviations...")
         self.replacement_levels = self.load_replacement_levels()
