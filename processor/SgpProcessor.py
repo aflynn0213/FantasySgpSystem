@@ -34,7 +34,7 @@ class SgpProcessor:
             cols_included = list(range(2,8))
             if (not sb_included):
                 cols_included.remove(5)
-            print(cols_included)
+            
             df['Total_SGP'] = df.iloc[:, cols_included].sum(axis=1)
             df['Total_SGP_wSB'] = df.iloc[:, 2:8].sum(axis=1)
             
