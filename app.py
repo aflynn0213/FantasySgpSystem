@@ -9,42 +9,51 @@ app = Flask(__name__)
 # Global variable to store SGP results
 sgp_results = None  # Stores {'hitters': df, 'pitchers': df, 'combined': df}
 sgp_results_oops = None
+sgp_results_batx_oops = None
 
 def generate_sgp():
     """Runs the SGP processing and stores results globally."""
-    global sgp_results, sgp_results_oops
+    global sgp_results, sgp_results_oops, sgp_results_batx_oops
     print("[*] Running SGP Processor...")
 
     # Initialize hitter & pitcher objects
     sgp_hit = SgpHitters(proj='atc')
+    sgp_hit_batx = SgpHitters(proj='batx')
     sgp_pit = SgpPitchers(proj='atc')
     sgp_pit_oops = SgpPitchers(proj='oopsy',ip_adj='atc')
     
     # Process SGP rankings
     processor = SgpProcessor(sgp_hit, sgp_pit)
     processor_oops = SgpProcessor(sgp_hit,sgp_pit_oops)
+    processor_batx_oops = SgpProcessor(sgp_hit_batx,sgp_pit_oops)
     
     # Store results in global variable
     sgp_results = {
-        'hitters': processor.hitters_df,
+        'hitters':  processor.hitters_df,
         'pitchers': processor.pitchers_df,
         'combined': processor.combined_df
     }
     
     sgp_results_oops = {
-        'hitters': processor_oops.hitters_df,
+        'hitters':  processor_oops.hitters_df,
         'pitchers': processor_oops.pitchers_df,
         'combined': processor_oops.combined_df
     }   
+    
+    sgp_results_batx_oops = {
+        'hitters':  processor_batx_oops.hitters_df,
+        'pitchers': processor_batx_oops.pitchers_df,
+        'combined': processor_batx_oops.combined_df,
+    }
     
     print("[✔] SGP Processing Completed!")
 
 @app.route('/')
 def home():
-    global sgp_results, sgp_results_oops
+    global sgp_results, sgp_results_oops, sgp_results_batx_oops
     
     """Main page displaying SGP results."""
-    if sgp_results is None or sgp_results_oops  is None:
+    if sgp_results is None or sgp_results_oops is None or sgp_results_batx_oops is None:
         generate_sgp()  # Run if not already processed
 
     valid_projections = ['atc', 'oopsy']

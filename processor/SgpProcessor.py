@@ -15,6 +15,15 @@ class SgpProcessor:
         temp_auc_hit = sgp_hitters.auc_calc.copy()
         self.suffix = f"{sgp_hitters.proj}_{sgp_pitchers.proj}"
 
+        self.sufficient_pos_counts = {"CI": 36, "MI": 36, "C": 12, "OF": 60, 'UTIL': 12}
+        self.position_mapping = {'C': 'C', 
+                                 '1B': 'CI', 
+                                 '2B': 'MI', 
+                                 '3B': 'CI', 
+                                 'SS': 'MI', 
+                                 'OF': 'OF', 
+                                 'DH': 'UTIL'}
+         
         print("[*] Preparing hitter data...")
         self.hitters_df = self.prepare_data(temp_hitters, 'Hitter', sgp_hitters.sb_included, temp_auc_hit)
         print("[*] Preparing pitcher data...")
@@ -49,8 +58,8 @@ class SgpProcessor:
             for pos in ["1B", "3B", "2B", "SS", "C", "OF", "DH"]:
                 df[f"{pos}_count"] = (df["POS"] == pos).cumsum()
             
-            df["1B/3B_count"] = df["1B_count"] + df["3B_count"]
-            df["2B/SS_count"] = df["2B_count"] + df["SS_count"]
+            df["CI_count"] = df["1B_count"] + df["3B_count"]
+            df["MI_count"] = df["2B_count"] + df["SS_count"]
             
             df["UTIL"] = self.assign_util(df)
             
@@ -90,12 +99,13 @@ class SgpProcessor:
         util_count = 0
 
         for _, row in df.iterrows():
+            limit = self.sufficient_pos_counts[self.position_mapping[row["POS"]]]+1
             if (
                 row["POS"] == "DH" or
-                (row["POS"] == "OF" and row["OF_count"] >= 61) or
-                (row["POS"] == "C" and row["C_count"] >= 13) or
-                (row["POS"] in ["1B", "3B"] and row["1B_count"] + row["3B_count"] >= 37) or
-                (row["POS"] in ["2B", "SS"] and row["2B_count"] + row["SS_count"] >= 37)
+                (row["POS"] == "OF" and row["OF_count"] >= limit) or
+                (row["POS"] == "C" and row["C_count"] >= limit) or
+                (row["POS"] in ["1B", "3B"] and row["1B_count"] + row["3B_count"] >= limit) or
+                (row["POS"] in ["2B", "SS"] and row["2B_count"] + row["SS_count"] >= limit)
             ):
                 util_count += 1
                 util_list.append(util_count)
@@ -111,36 +121,35 @@ class SgpProcessor:
         def get_rostered_universe(df):
             """Find the lowest-ranked players that fill required positions"""
             rostered = []
-            needed = {"CI": 36, "MI": 36, "C": 12, "OF": 60, "UTIL": 12}
-            counts = {k: 0 for k in needed}
+            counts = {k: 0 for k in self.sufficient_pos_counts}
 
             # Sort by Total_SGP (higher SGP players prioritized)
             df_sorted = df.sort_values(by="Total_SGP", ascending=False).reset_index(drop=True)
 
             for _, row in df_sorted.iterrows():
                 assigned = False
-                pos = row["POS"]  # Use POS for primary bucket assignment
-
+                pos = self.position_mapping[row["POS"]]  # Use POS for primary bucket assignment
+                needed = self.sufficient_pos_counts[pos]
                 # Assign based on primary POS
-                if pos in ["1B", "3B"] and counts["CI"] < needed["CI"]:
+                if pos == 'CI' and counts["CI"] < needed:
                     counts["CI"] += 1
                     rostered.append(row)
                     assigned = True
-                elif pos in ["2B", "SS"] and counts["MI"] < needed["MI"]:
+                elif pos == 'MI' and counts["MI"] < needed:
                     counts["MI"] += 1
                     rostered.append(row)
                     assigned = True
-                elif pos == "C" and counts["C"] < needed["C"]:
+                elif pos == "C" and counts["C"] < needed:
                     counts["C"] += 1
                     rostered.append(row)
                     assigned = True
-                elif pos == "OF" and counts["OF"] < needed["OF"]:
+                elif pos == "OF" and counts["OF"] < needed:
                     counts["OF"] += 1
                     rostered.append(row)
                     assigned = True
 
                 # If not assigned to a primary position, consider for UTIL
-                if not assigned and counts["UTIL"] < needed["UTIL"]:
+                if not assigned and counts["UTIL"] < self.sufficient_pos_counts['UTIL']:
                     counts["UTIL"] += 1
                     rostered.append(row)
 
@@ -159,14 +168,38 @@ class SgpProcessor:
 
         print("[*] Finding worst rostered player per position...")
         worst_rostered = {}
+
         for pos in ["1B", "3B", "2B", "SS", "C", "OF"]:
-            worst_player = rostered_df[rostered_df["ELIG"].str.contains(pos, na=False)].nsmallest(1, "Total_SGP")
+            eligible_players = rostered_df[rostered_df["ELIG"].str.contains(pos, na=False)].copy()
+            
+            def is_available(row):
+                if row["POS"] == pos:
+                    return True
+                
+                mapped_pos = self.position_mapping.get(row["POS"], row["POS"])  # Map to positional groupings
+            
+                if mapped_pos != "UTIL" and row[f'{mapped_pos}_count'] <= self.sufficient_pos_counts.get(mapped_pos, float("inf")):
+                    return False  # This player is still needed elsewhere
+                
+                return True
+            
+            eligible_players = eligible_players[eligible_players.apply(is_available, axis=1)]
+            
+            # Get the worst (lowest Total_SGP) player
+            worst_player = eligible_players.nsmallest(1, "Total_SGP")
+
+            worst_rostered[pos] = worst_player["Total_SGP"].values[0]
+            print(f"[DEBUG] Worst rostered {pos}: {worst_player['Name'].values[0]} (SGP: {worst_rostered[pos]})")
+
+            '''        
+            worst_player = rostered_df[(rostered_df["ELIG"].str.contains(pos, na=False))].nsmallest(1, "Total_SGP")
             if not worst_player.empty:
                 worst_rostered[pos] = worst_player["Total_SGP"].values[0]
                 print(f"[DEBUG] Worst rostered {pos}: {worst_player['Name'].values[0]} (SGP: {worst_rostered[pos]})")
             else:
                 worst_rostered[pos] = float("inf")
-
+            '''
+            
         print("[*] Finding best non-rostered player per position...")
         best_replacements = {}
         for pos in worst_rostered.keys():
