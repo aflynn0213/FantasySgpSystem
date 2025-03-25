@@ -99,7 +99,7 @@ class SgpProcessor:
         util_count = 0
 
         for _, row in df.iterrows():
-            limit = self.sufficient_pos_counts[self.position_mapping[row["POS"]]]+1
+            limit = self.sufficient_pos_counts[self.position_mapping.get(row["POS"],"UTIL")]+1
             if (
                 row["POS"] == "DH" or
                 (row["POS"] == "OF" and row["OF_count"] >= limit) or
