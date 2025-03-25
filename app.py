@@ -17,8 +17,8 @@ def generate_sgp():
     print("[*] Running SGP Processor...")
 
     # Initialize hitter & pitcher objects
-    sgp_hit = SgpHitters(proj='atc')
-    sgp_hit_batx = SgpHitters(proj='batx')
+    sgp_hit = SgpHitters(proj='atc',sb_included=False)
+    sgp_hit_batx = SgpHitters(proj='batx',sb_included=False)
     sgp_pit = SgpPitchers(proj='atc')
     sgp_pit_oops = SgpPitchers(proj='oopsy',ip_adj='atc')
     
