@@ -21,6 +21,8 @@ class SgpBase:
         self.proj = proj.split()[0].lower()
         print("[*] Loading projection data...")
         self.stats = pd.read_excel(f'projections/fangraphs_{file_prefix}_{self.proj}.xlsx', sheet_name=0)
+        self.stats = self.stats.drop_duplicates(subset=['Name', 'PlayerId'])
+        
         print("[*] Loading auction calculator data...")
         self.auc_calc = pd.read_excel(f"auction_calculator_exports/auc_calc_{file_prefix}_{self.proj}.xlsx", sheet_name=0)
 

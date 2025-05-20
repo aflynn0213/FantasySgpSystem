@@ -111,10 +111,8 @@ class SgpPitchers(SgpBase):
         play_time_df = play_time_df.rename(columns={'IP': 'new_IP', 'TBF': 'new_TBF'})
         self.stats = self.stats.merge( play_time_df[['PlayerId', 'new_IP', 'new_TBF']],  
                                     on='PlayerId', 
-                                    how='left'
+                                    how='inner'
                                 )
-        self.stats['new_IP'] = self.stats['new_IP'].fillna(self.stats['IP'])
-        self.stats['new_TBF'] = self.stats['new_TBF'].fillna(self.stats['TBF'])
         
         new_ip_multiple = self.stats['new_IP']/self.stats["IP"]
         new_tbf_multiple = self.stats['new_TBF']/self.stats["TBF"]
