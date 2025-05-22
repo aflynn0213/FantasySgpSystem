@@ -1,4 +1,4 @@
 #!/bin/bash
 
 python update_stats.py
-python -w 8
+python in_season_sgp.py -b atc -wk 8
