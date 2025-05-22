@@ -19,7 +19,7 @@ if __name__ == "__main__":
     df = sgp_hit.sgp_df.copy()
     
     cols_included = list(range(0,6))
-    if (not args.sb_included):
+    if (args.sb_included):
         cols_included.remove(3)
         df['Total_SGP_wSB'] = df.iloc[:,0:6].sum(axis=1)
     df['Total_SGP'] = df.iloc[:, cols_included].sum(axis=1)
