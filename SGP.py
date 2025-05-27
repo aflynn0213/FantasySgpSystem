@@ -1,3 +1,4 @@
+''' NO LONGER IN USE, all the functionality has been moved to the SgpBase parent class from which SgpHitters and SgpPitchers seperate classes now inherit from
 import time
 from asyncio.windows_events import NULL
 import string
@@ -268,4 +269,4 @@ if __name__ == "__main__":
     
     print(f"[✔] Total execution time: {time.time() - start_total_time:.2f} seconds.")
     
-
+'''
