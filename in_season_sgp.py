@@ -7,6 +7,7 @@ from openpyxl import load_workbook
 from openpyxl.styles import Font
 
 from Sgp.SgpHitters import SgpHitters
+from utils.inseason_export_sgp import export_sgp
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="SGP Processing Script")
@@ -19,21 +20,17 @@ if __name__ == "__main__":
     df = sgp_hit.sgp_df.copy()
     
     cols_included = list(range(0,6))
-    if (args.sb_included):
+    if (not args.sb_included):
         cols_included.remove(3)
         df['Total_SGP_wSB'] = df.iloc[:,0:6].sum(axis=1)
+    else: 
+        df['Total_SGP_wSB'] = np.nan
+        
     df['Total_SGP'] = df.iloc[:, cols_included].sum(axis=1)
     df = df.sort_values(by="Total_SGP", ascending=False)
-    print("[*] Exporting SGP Results...")
-        
-    SAVE_FOLDER = os.path.join(os.getcwd(), "stats")
-    os.makedirs(SAVE_FOLDER,exist_ok=True)
     
-    sb_string = "_sb_included" if args.sb_included else ""
-    file_name = f"stats/SGP_Results_{sb_string}.xlsx"
-    df.reset_index(inplace=True)
-    with pd.ExcelWriter(file_name) as writer:
-        df[['Name', 'PlayerId', 'PA', 'SGP_R', 'SGP_HR', 'SGP_RBI', 'SGP_SB', 'SGP_OBP', 'SGP_SLG', 'Total_SGP_wSB', 'Total_SGP']].to_excel(writer, sheet_name='Hitters', index=False)
+    print("[*] Exporting SGP Results...")
+    file_name = export_sgp(df,args.sb_included)
     
     print(f"[✔] Exported SGP Results to {file_name}")
     
