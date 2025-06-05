@@ -14,8 +14,10 @@ class SgpBase:
         Base class for SGP processing.
         :param proj: Projection system (e.g., "atc", "zips").
         :param file_prefix: "hitting" or "pitching" (determines file names).
-        :param sheet_name: Sheet name in the Excel file ("3YR RUNNING AVG SGP").
+        :param weeks: Weeks into the season to determine SGP proportion (26 default for full season projections).
         """
+        self.weeks = weeks
+        
         print(f"[*] Initializing Sgp {file_prefix} for projections: {proj}")
         self.proj = proj.split()[0].lower()
         print("[*] Loading projection data...")
@@ -39,10 +41,10 @@ class SgpBase:
 
         print(f"[✔] SgpBase initialized for {file_prefix}.")
 
-    def cat_calc_sgp(self,projection:string,wk=26):
-        return (self.stats[projection] - (wk/26)*self.replacement_levels[projection]) / ((wk/26)*self.cat_stds[projection])
+    def cat_calc_sgp(self,category:string):
+        return (self.stats[category] - (self.weeks/26)*self.replacement_levels[category]) / ((self.weeks/26)*self.cat_stds[category])
     
-    def rate_calc_sgp(self,cat:string,opportunities:string,wk=26):
+    def rate_calc_sgp(self,cat:string,opportunities:string):
         """Processes rate stats to determine SGPs""" 
         raise NotImplementedError("Subclasses must implement rate_calc_sgp()")
     

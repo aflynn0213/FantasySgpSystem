@@ -11,7 +11,7 @@ class SgpHitters(SgpBase):
         super().__init__(proj,"hitting",weeks)
         
         self.sb_included = sb_included
-        self.weeks = weeks
+        
         print("[*] Loading replacement levels and category standard deviations...")
         self.replacement_levels = self.load_replacement_levels()
         self.cat_stds = self.load_category_stds()
@@ -22,18 +22,15 @@ class SgpHitters(SgpBase):
         self.team_rate_values_processing()
         
         print("[*] Processing hitters SGP...")
-        if (weeks == 26):
-            self.process_sgp()
-        else:
-            self.process_sgp(wk=self.weeks)
-        self.sgp_df['PA'] = self.stats['PA'] - self.stats['SH']
+        self.process_sgp()
         
+        self.sgp_df['PA'] = self.stats['PA'] - self.stats['SH']
         self.sgp_df[['Name', 'PlayerId']] = self.stats[['Name', 'PlayerId']]
         self.sgp_df.set_index(['Name','PlayerId'], inplace=True)
         
         print(f"[✔] SgpHitters initialized")
 
-    def rate_calc_sgp(self,cat:string,opportunities:string,wk=26):
+    def rate_calc_sgp(self,cat:string,opportunities:string):
         if opportunities == 'AB':
             team_cat = 'SLG_AB'
             player_opps = self.stats[opportunities]
@@ -43,19 +40,19 @@ class SgpHitters(SgpBase):
 
         player_val = self.stats[cat]*player_opps
         team_val_wo_average_player = self.team_value[team_cat]
-        total_opps = (wk/26)*self.team_opportunities[opportunities] + player_opps
+        total_opps = (self.weeks/26)*self.team_opportunities[opportunities] + player_opps
 
-        return (((wk/26)*team_val_wo_average_player+player_val)/(total_opps) - self.replacement_levels[cat])/self.cat_stds[cat]
+        return (((self.weeks/26)*team_val_wo_average_player+player_val)/(total_opps) - self.replacement_levels[cat])/self.cat_stds[cat]
 
-    def process_sgp(self,wk=26):
+    def process_sgp(self):
         print("[*] Calculating SGP for counting stats (R, HR, RBI, SB)...")
         self.sgp_df = pd.DataFrame()
         for cat in ['R', 'HR', 'RBI', 'SB']:
-            self.sgp_df[f'SGP_{cat}'] = self.cat_calc_sgp(cat,wk)
+            self.sgp_df[f'SGP_{cat}'] = self.cat_calc_sgp(cat)
         
         print("[*] Calculating SGP for rate stats (OBP, SLUG)...")
         for cat, opps in [('OBP', 'PA'), ('SLG', 'AB')]:
-            self.sgp_df[f'SGP_{cat}'] = self.rate_calc_sgp(cat,opps,wk)
+            self.sgp_df[f'SGP_{cat}'] = self.rate_calc_sgp(cat,opps)
         
         print("[✔] Hitters SGP calculation complete.")
         
