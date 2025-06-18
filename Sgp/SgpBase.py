@@ -9,31 +9,54 @@ NUM_STARTERS = 9
 NUM_RELIEVERS = 3
 
 class SgpBase:
-    def __init__(self, proj, file_prefix):
+    def __init__(self, proj, player_type, weeks=26):
         """
         Base class for SGP processing.
         :param proj: Projection system (e.g., "atc", "zips").
-        :param file_prefix: "hitting" or "pitching" (determines file names).
-        :param sheet_name: Sheet name in the Excel file ("3YR RUNNING AVG SGP").
+        :param player_type: "hitting" or "pitching" (also determines file names).
+        :param weeks: Weeks into the season to determine SGP proportion (26 default for full season projections).
         """
-        print(f"[*] Initializing Sgp {file_prefix} for projections: {proj}")
-
-        self.proj = proj.split()[0].lower()
-        print("[*] Loading projection data...")
-        self.stats = pd.read_excel(f'projections/fangraphs_{file_prefix}_{self.proj}.xlsx', sheet_name=0)
-        self.stats = self.stats.drop_duplicates(subset=['Name', 'PlayerId'])
         
-        print("[*] Loading auction calculator data...")
-        self.auc_calc = pd.read_excel(f"auction_calculator_exports/auc_calc_{file_prefix}_{self.proj}.xlsx", sheet_name=0)
+        print(f"[*] Initializing Sgp {player_type} for projections: {proj}")
+        self.proj,self.period = proj.split('_')
+        
+        print("[*] Loading projection data...")
+        if self.period == 'pre':
+            self.weeks = 26
+            self.proj_read = pd.read_excel(f'projections/fangraphs_{player_type}_{self.proj}.xlsx', sheet_name=0)
+            self.stats = self.proj_read.drop_duplicates(subset=['Name', 'PlayerId'])
+
+            print("[*] Loading auction calculator data...")
+            self.auc_calc = pd.read_excel(f"auction_calculator_exports/auc_calc_{player_type}_{self.proj}.xlsx", sheet_name=0)
+
+        elif self.period == 'td':
+            self.weeks = weeks
+            self.proj_read = pd.read_excel(f'projections/fangraphs_{player_type}_{self.proj}.xlsx', sheet_name=0)
+            self.stats = pd.read_excel(f"stats/fangraphs_{player_type}_stats.xlsx",sheet_name=0)
+
+            print("[*] Loading auction calculator data...")
+            self.auc_calc = pd.read_excel(f"auction_calculator_exports/auc_calc_{player_type}_{self.proj}.xlsx", sheet_name=0)
+
+        elif self.period == 'ros':
+            self.weeks = 26 - weeks
+            self.stats = pd.read_excel(f"ros/fangraphs_{player_type}_{self.proj}_ros.xlsx",sheet_name=0)
+            self.proj_read = self.stats.copy()
+
+            print("[*] Loading auction calculator data...")
+            self.auc_calc = pd.read_excel(f"auction_calculator_exports/auc_calc_{player_type}_{self.proj}_ros.xlsx", sheet_name=0)
+            
+        self.stats["PlayerId"] = self.stats["PlayerId"].astype(str) 
+        self.proj_read['PlayerId'] = self.proj_read['PlayerId'].astype(str)
+        self.auc_calc["PlayerId"] = self.auc_calc["PlayerId"].astype(str)
 
         # Load league-wide replacement levels & category standard deviations
         self.wb = load_workbook("leaguehistory.xlsx", data_only=True)
         self.sheet = self.wb["Sheet1"]
 
-        print(f"[✔] SgpBase initialized for {file_prefix}.")
-
-    def cat_calc_sgp(self,projection:string):
-        return (self.stats[projection] - self.replacement_levels[projection]) / self.cat_stds[projection]
+        print(f"[✔] SgpBase initialized for {player_type}.")
+    
+    def cat_calc_sgp(self,category:string):
+        return (self.stats[category] - (self.weeks/26)*self.replacement_levels[category]) / ((self.weeks/26)*self.cat_stds[category])
     
     def rate_calc_sgp(self,cat:string,opportunities:string):
         """Processes rate stats to determine SGPs""" 

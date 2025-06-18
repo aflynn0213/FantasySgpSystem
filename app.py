@@ -10,6 +10,7 @@ app = Flask(__name__)
 sgp_results = None  # Stores {'hitters': df, 'pitchers': df, 'combined': df}
 sgp_results_oops = None
 sgp_results_batx_oops = None
+sgp_results_in_Season = None
 
 def generate_sgp():
     """Runs the SGP processing and stores results globally."""
@@ -22,10 +23,14 @@ def generate_sgp():
     sgp_pit = SgpPitchers(proj='atc')
     sgp_pit_oops = SgpPitchers(proj='oopsy',ip_adj='atc')
     
+    sgp_curr_hit = SgpHitters(proj='atc',weeks=8)
+    
     # Process SGP rankings
     processor = SgpProcessor(sgp_hit, sgp_pit)
     processor_oops = SgpProcessor(sgp_hit,sgp_pit_oops)
     processor_batx_oops = SgpProcessor(sgp_hit_batx,sgp_pit_oops)
+    
+    processor_inSeason = SgpProcessor(sgp_curr_hit,sgp_pit)
     
     # Store results in global variable
     sgp_results = {
@@ -46,24 +51,36 @@ def generate_sgp():
         'combined': processor_batx_oops.combined_df,
     }
     
+    sgp_results_in_Season = {
+        'hitters': processor_inSeason.hitters_df,
+        'pitchers': pd.DataFrame(),
+        'combined': pd.DataFrame()
+    }
+    
     print("[✔] SGP Processing Completed!")
 
 @app.route('/')
 def home():
-    global sgp_results, sgp_results_oops, sgp_results_batx_oops
+    global sgp_results, sgp_results_oops, sgp_results_batx_oops, sgp_results_in_Season
     
     """Main page displaying SGP results."""
-    if sgp_results is None or sgp_results_oops is None or sgp_results_batx_oops is None:
+    if sgp_results is None or sgp_results_oops is None or sgp_results_batx_oops is None or sgp_results_in_Season is None:
         generate_sgp()  # Run if not already processed
 
-    valid_projections = ['atc', 'oopsy']
+    valid_projections = ['atc', 'oopsy', 'current']
     selected_proj = request.args.get('projection', 'atc')  # Defaults to 'atc'
 
     if selected_proj not in valid_projections:
         selected_proj = 'atc'  # Fallback to 'atc' if invalid
 
     # Choose correct dataset based on user selection
-    results = sgp_results if selected_proj == 'atc' else sgp_results_oops
+    results = sgp_results 
+    if selected_proj == 'atc':
+        results = sgp_results    
+    elif (selected_proj == 'oopsy'):
+        results = sgp_results_oops
+    elif (selected_proj == 'current'):
+        results = sgp_results_in_Season
 
     return render_template('index.html',
                            selected_proj=selected_proj,
