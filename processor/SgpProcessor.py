@@ -9,7 +9,7 @@ class SgpProcessor:
     def __init__(self, sgp_hitters, sgp_pitchers):
 
         print("[*] Initializing SGP Processor...")
-        
+        self.weeks = sgp_hitters.weeks
         temp_hitters = sgp_hitters.sgp_df.copy()
         temp_pitchers = sgp_pitchers.sgp_df.copy()
         temp_auc_hit = sgp_hitters.auc_calc.copy()
@@ -28,12 +28,17 @@ class SgpProcessor:
         self.hitters_df = self.prepare_data(temp_hitters, 'Hitter', sgp_hitters.sb_included, temp_auc_hit)
         print("[*] Preparing pitcher data...")
         self.pitchers_df = self.prepare_data(temp_pitchers, 'Pitcher')
-                                                     
+        
+        cols_in_hitters_df = ['Name', 'PlayerId', 'Total_SGP', 'RL', 'VAR']
+        sorter = 'VAR'
+        if self.weeks < 26:
+            cols_in_hitters_df = cols_in_hitters_df[:3]
+            sorter = 'Total_SGP'
         print("[*] Combining data for final rankings...")
         self.combined_df = pd.concat([
-            self.hitters_df[['Name', 'PlayerId', 'Total_SGP', 'RL', 'VAR']],
+            self.hitters_df[cols_in_hitters_df],
             self.pitchers_df[['Name', 'PlayerId', 'Total_SGP', 'RL', 'VAR']]
-        ]).groupby(['Name', 'PlayerId'], as_index=False).sum().sort_values(by='VAR', ascending=False)
+        ]).groupby(['Name', 'PlayerId'], as_index=False).sum().sort_values(by=sorter, ascending=False)
         
         print("[✔] SGP Data Prepared!")
     
@@ -49,24 +54,25 @@ class SgpProcessor:
             
             df = df.sort_values(by="Total_SGP", ascending=False).reset_index()
             
-            auc_calc = auc_calc.rename(columns={'POS': 'ELIG'})
-            df = df.merge(auc_calc[['PlayerId', 'ELIG']], on='PlayerId', how='left')
-            
-            # Apply function to create POS column
-            df['POS'] = df['ELIG'].apply(self.determine_pos)
+            if self.weeks == 26:
+                auc_calc = auc_calc.rename(columns={'POS': 'ELIG'})
+                df = df.merge(auc_calc[['PlayerId', 'ELIG']], on='PlayerId', how='left')
+                
+                # Apply function to create POS column
+                df['POS'] = df['ELIG'].apply(self.determine_pos)
 
-            for pos in ["1B", "3B", "2B", "SS", "C", "OF", "DH"]:
-                df[f"{pos}_count"] = (df["POS"] == pos).cumsum()
-            
-            df["CI_count"] = df["1B_count"] + df["3B_count"]
-            df["MI_count"] = df["2B_count"] + df["SS_count"]
-            
-            df["UTIL"] = self.assign_util(df)
-            
-            df.to_excel('temp_players.xlsx')
-            
-            print("[*] Computing replacement level (RL)...")
-            df = self.compute_replacement_level(df)
+                for pos in ["1B", "3B", "2B", "SS", "C", "OF", "DH"]:
+                    df[f"{pos}_count"] = (df["POS"] == pos).cumsum()
+                
+                df["CI_count"] = df["1B_count"] + df["3B_count"]
+                df["MI_count"] = df["2B_count"] + df["SS_count"]
+                
+                df["UTIL"] = self.assign_util(df)
+                
+                df.to_excel('temp_players.xlsx')
+                
+                print("[*] Computing replacement level (RL)...")
+                df = self.compute_replacement_level(df)
             
         else:
             df['Total_SGP'] = df.iloc[:, 2:8].sum(axis=1)

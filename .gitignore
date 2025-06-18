@@ -7,5 +7,7 @@ sgp_venv/
 .env
 auction_calculator_exports/
 projections/
-rostered.xlsx
-temp_players.xlsx
+*.xlsx
+**/*.xlsx
+**/~$*.xlsx
+
