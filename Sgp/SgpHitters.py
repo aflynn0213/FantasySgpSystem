@@ -7,8 +7,8 @@ NUM_TEAMS = 12
 NUM_BATS = 13
 
 class SgpHitters(SgpBase):
-    def __init__(self,proj,sb_included:False) -> None:
-        super().__init__(proj,"hitting")
+    def __init__(self,proj,sb_included=False,weeks=26) -> None:
+        super().__init__(proj,"hitting",weeks)
         
         self.sb_included = sb_included
         
@@ -25,7 +25,6 @@ class SgpHitters(SgpBase):
         self.process_sgp()
         
         self.sgp_df['PA'] = self.stats['PA'] - self.stats['SH']
-        
         self.sgp_df[['Name', 'PlayerId']] = self.stats[['Name', 'PlayerId']]
         self.sgp_df.set_index(['Name','PlayerId'], inplace=True)
         
@@ -41,9 +40,9 @@ class SgpHitters(SgpBase):
 
         player_val = self.stats[cat]*player_opps
         team_val_wo_average_player = self.team_value[team_cat]
-        total_opps = self.team_opportunities[opportunities] + player_opps
+        total_opps = (self.weeks/26)*self.team_opportunities[opportunities] + player_opps
 
-        return ((team_val_wo_average_player+player_val)/(total_opps) - self.replacement_levels[cat])/self.cat_stds[cat]
+        return (((self.weeks/26)*team_val_wo_average_player+player_val)/(total_opps) - self.replacement_levels[cat])/self.cat_stds[cat]
 
     def process_sgp(self):
         print("[*] Calculating SGP for counting stats (R, HR, RBI, SB)...")
@@ -59,14 +58,13 @@ class SgpHitters(SgpBase):
         
     def team_rate_values_processing(self,ip_adj=None):
         temp_df = self.auc_calc.copy()
-        temp_df = temp_df.merge(    self.stats[['PlayerId', 'SH', 'AB']],  
-                                    on='PlayerId', 
-                                    how='left'
-                                )
+        temp_df = temp_df.merge(self.proj_read[['PlayerId','SH','AB']],
+                                on='PlayerId',
+                                how='left')
         
         for cat,val,cat_val in [('OBP','PA','OBP_PA'), ('SLG','AB','SLG_AB')]: 
             if val == 'PA':
-                temp_df['PA_SH'] = temp_df['PA'] - temp_df['SH']
+                temp_df['PA_SH'] = temp_df['PA'] - temp_df['SH'] 
                 avg_opps = temp_df['PA_SH'].head(NUM_BATS*NUM_TEAMS).mean()
             elif val == 'AB':
                 avg_opps = temp_df['AB'].head(NUM_BATS*NUM_TEAMS).mean()
