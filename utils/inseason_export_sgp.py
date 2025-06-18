@@ -5,9 +5,15 @@ import os
 export_cols = ['PA', 'SGP_R', 'SGP_HR', 'SGP_RBI', 'SGP_SB', 'SGP_OBP', 'SGP_SLG', 'Total_SGP_wSB', 'Total_SGP']
 index_cols = ['Name','PlayerId']
 
-SAVE_FOLDER = os.path.join(os.getcwd(), "../stats")
+
     
-def export_sgp(df,sb):
+def export_sgp(df,sb,dir):
+    if 'td' == dir :
+        save_loc = "stats"
+    elif 'ros' == dir:
+        save_loc = "ros"
+    SAVE_FOLDER = os.path.join(os.getcwd(), save_loc)
+
     column_missing = [col for col in export_cols if col not in df.columns]
     index_missing = [index for index in index_cols if index not in list(df.index.names)]
     if column_missing:
@@ -18,7 +24,7 @@ def export_sgp(df,sb):
     os.makedirs(SAVE_FOLDER,exist_ok=True)
     
     sb_string = "_sb_included" if sb else ""
-    file_name = f"stats/SGP_Results_{sb_string}.xlsx"
+    file_name = f"{save_loc}/SGP_Results_{sb_string}.xlsx"
     df.reset_index(inplace=True)
     
     with pd.ExcelWriter(file_name) as writer:

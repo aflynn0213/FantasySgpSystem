@@ -30,6 +30,10 @@ DOWNLOAD_FOLDER = os.path.join(HOME_DIR, "Downloads")
 LOGIN_URL = "https://blogs.fangraphs.com/wp-login.php"
 PROJECTIONS_URLS = {
     "fangraphs_hitting_stats":    "https://www.fangraphs.com/leaders/major-league?pos=all&stats=bat&lg=all&type=c%2C4%2C5%2C6%2C19%2C11%2C12%2C13%2C21%2C-1%2C34%2C35%2C40%2C41%2C-1%2C23%2C37%2C38%2C50%2C317%2C61%2C-1%2C111%2C-1%2C203%2C199%2C58&month=0&ind=0&team=0&qual=100&v_cr=202301&startdate=&enddate=&season1=2025&season=2025&pagenum=1&pageitems=2000000000",
+    "fangraphs_hitting_atc_ros": "https://www.fangraphs.com/projections?type=ratcdc&stats=bat&pos=all&team=0&players=0&lg=all&z=1749725837&sortcol=&sortdir=desc&pageitems=30&statgroup=dashboard&fantasypreset=dashboard",
+    "fangraphs_hitting_batx_ros": "https://www.fangraphs.com/projections?type=rthebatx&stats=bat&pos=all&team=0&players=0&lg=all&z=1749725837&pageitems=30&statgroup=dashboard&fantasypreset=dashboard",
+    "auc_calc_hitting_atc_ros": "https://www.fangraphs.com/fantasy-tools/auction-calculator?teams=12&lg=MLB&dollars=260&mb=1&mp=20&msp=10&mrp=1&type=bat&players=&proj=ratcdc&split=65&points=c%7C1%2C2%2C3%2C4%2C5%2C6%7C14%2C2%2C3%2C4%2C8&rep=0&drp=0&pp=C%2C2B%2COF%2CSS%2C3B%2C1B&pos=1%2C1%2C1%2C1%2C5%2C1%2C1%2C1%2C0%2C1%2C9%2C3%2C0%2C1%2C0&sort=&view=0",
+    "auc_calc_hitting_batx_ros": "https://www.fangraphs.com/fantasy-tools/auction-calculator?teams=12&lg=MLB&dollars=260&mb=1&mp=20&msp=10&mrp=1&type=bat&players=&proj=rthebatx&split=65&points=c%7C1%2C2%2C3%2C4%2C5%2C6%7C13%2C14%2C2%2C3%2C4%2C8&rep=0&drp=0&pp=C%2C2B%2COF%2CSS%2C3B%2C1B&pos=1%2C1%2C1%2C1%2C5%2C1%2C1%2C1%2C0%2C1%2C9%2C3%2C0%2C1%2C0&sort=&view=0"
 }
 
 BASE_DIR = os.path.abspath(os.getcwd())
@@ -37,6 +41,7 @@ BASE_DIR = os.path.abspath(os.getcwd())
 # Where to save files
 SAVE_FOLDER = os.path.join(BASE_DIR, "stats")
 SAVE_FOLDER_AUC = os.path.join(BASE_DIR,"auction_calculator_exports")
+SAVE_FOLDER_ROS = os.path.join(BASE_DIR, "ros")
 
 os.makedirs(SAVE_FOLDER, exist_ok=True)
 os.makedirs(SAVE_FOLDER_AUC,exist_ok=True)
@@ -105,6 +110,7 @@ def download_fangraphs_csv(driver, url, save_path):
 
     # Convert CSV to Excel
     df = pd.read_csv(csv_path)
+    os.makedirs(os.path.dirname(save_path), exist_ok=True)
     df.to_excel(save_path, index=False)
     os.remove(csv_path)
     print(f"[✔] File saved: {save_path}")
@@ -156,7 +162,13 @@ def main():
     # Download each dataset
     for filename, url in PROJECTIONS_URLS.items():
         print(f"\n[⚡] Processing: {filename}")
-        save_path = os.path.join(SAVE_FOLDER, f"{filename}.xlsx") if "fangraphs" in filename else os.path.join(SAVE_FOLDER_AUC, f"{filename}.xlsx")
+        if "auc_calc" in filename:
+            save_path = os.path.join(SAVE_FOLDER_AUC, f"{filename}.xlsx") 
+        else:
+            if "stats" in filename:
+                save_path = os.path.join(SAVE_FOLDER, f"{filename}.xlsx") 
+            elif "ros" in filename:
+                save_path = os.path.join(SAVE_FOLDER_ROS, f"{filename}.xlsx") 
         download_fangraphs_csv(driver, url, save_path)
 
     print("\n[✔] Done!")
