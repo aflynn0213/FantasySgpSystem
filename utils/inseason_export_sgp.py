@@ -24,7 +24,7 @@ def export_sgp(df,sb,dir):
     os.makedirs(SAVE_FOLDER,exist_ok=True)
     
     sb_string = "_sb_included" if sb else ""
-    file_name = f"{save_loc}/SGP_Results_{sb_string}.xlsx"
+    file_name = f"{save_loc}/SGP_Results_{dir}_{sb_string}.xlsx"
     df.reset_index(inplace=True)
     
     with pd.ExcelWriter(file_name) as writer:
