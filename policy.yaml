@@ -1,0 +1,7 @@
+etag: ACAB
+
+bindings:
+- role: roles/run.invoker
+  members:
+  - serviceAccount:cloud-scheduler@gcp-sa-cloudscheduler.iam.gserviceaccount.com
+

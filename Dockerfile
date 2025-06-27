@@ -42,9 +42,10 @@ COPY . .
 # Expose the port Flask runs on
 EXPOSE 5000
 
-# Copy the entrypoint script and make it executable
-COPY entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
+COPY inseason_entrypoint.sh /inseason_entrypoint.sh
+RUN chmod +x /inseason_entrypoint.sh
 
-# Use the entrypoint script
-ENTRYPOINT ["/entrypoint.sh"]
+ENTRYPOINT ["/inseason_entrypoint.sh"]
+
+# Optional: keep Flask exposed
+EXPOSE 5000

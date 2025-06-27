@@ -50,7 +50,7 @@ class SgpBase:
         self.auc_calc["PlayerId"] = self.auc_calc["PlayerId"].astype(str)
 
         # Load league-wide replacement levels & category standard deviations
-        self.wb = load_workbook("leaguehistory.xlsx", data_only=True)
+        self.wb = load_workbook("included/leaguehistory.xlsx", data_only=True)
         self.sheet = self.wb["Sheet1"]
 
         print(f"[✔] SgpBase initialized for {player_type}.")
