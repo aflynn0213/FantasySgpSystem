@@ -21,3 +21,10 @@ Thumbs.db
 
 # 🔹 Ignore unnecessary build files
 *.swp
+
+
+*.log
+.idea/
+.vscode/
+*.zip
+

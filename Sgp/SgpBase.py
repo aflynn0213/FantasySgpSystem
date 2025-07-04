@@ -1,7 +1,10 @@
 import pandas as pd
 from openpyxl import load_workbook
 import string
+from google.cloud import storage
 
+from utils.common_utils import download_from_bucket
+from utils.docker_running import is_running_in_docker
 
 NUM_TEAMS = 12
 NUM_BATS = 13
@@ -20,6 +23,24 @@ class SgpBase:
         print(f"[*] Initializing Sgp {player_type} for projections: {proj}")
         self.proj,self.period = proj.split('_')
         
+        # === Download from GCS if running in Docker ===
+        if is_running_in_docker():
+            print("[*] Downloading data from GCS...")
+            #download_from_bucket("fantasysgpsystem-outputs", 
+            #                     f"projections/fangraphs_{player_type}_{self.proj}.xlsx", 
+            #                     f"projections/fangraphs_{player_type}_{self.proj}.xlsx")
+            download_from_bucket("fantasysgpsystem-outputs", 
+                                 f"auction_calculator_exports/auc_calc_{player_type}_{self.proj}.xlsx", 
+                                 f"auction_calculator_exports/auc_calc_{player_type}_{self.proj}.xlsx")
+            if self.period == 'td':
+                download_from_bucket("fantasysgpsystem-outputs", 
+                                     f"stats/fangraphs_{player_type}_stats.xlsx", 
+                                     f"stats/fangraphs_{player_type}_stats.xlsx")
+            elif self.period == 'ros':
+                download_from_bucket("fantasysgpsystem-outputs", 
+                                     f"ros/fangraphs_{player_type}_{self.proj}_ros.xlsx", 
+                                     f"ros/fangraphs_{player_type}_{self.proj}_ros.xlsx")    
+    
         print("[*] Loading projection data...")
         if self.period == 'pre':
             self.weeks = 26
@@ -44,7 +65,7 @@ class SgpBase:
 
             print("[*] Loading auction calculator data...")
             self.auc_calc = pd.read_excel(f"auction_calculator_exports/auc_calc_{player_type}_{self.proj}_ros.xlsx", sheet_name=0)
-            
+        
         self.stats["PlayerId"] = self.stats["PlayerId"].astype(str) 
         self.proj_read['PlayerId'] = self.proj_read['PlayerId'].astype(str)
         self.auc_calc["PlayerId"] = self.auc_calc["PlayerId"].astype(str)

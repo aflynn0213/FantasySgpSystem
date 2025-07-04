@@ -10,6 +10,8 @@ from selenium.webdriver.common.keys import Keys
 from webdriver_manager.chrome import ChromeDriverManager
 from dotenv import load_dotenv
 
+from google.cloud import storage
+
 SELENIUM_GRID_URL = "http://selenium:4444/wd/hub"
 
 # Load environment variables from a .env file
@@ -133,7 +135,18 @@ def wait_for_selenium(timeout=1500):
 
     print("[ERROR] Selenium did not start in time. Exiting...")
     exit(1)
-    
+
+def upload_to_bucket(local_file_path, gcs_blob_name, bucket_name="fantasysgpsystem-outputs"):
+    try:
+        client = storage.Client()
+        bucket = client.bucket(bucket_name)
+        blob = bucket.blob(gcs_blob_name)
+        blob.upload_from_filename(local_file_path)
+        print(f"[⬆] Uploaded to GCS: gs://{bucket_name}/{gcs_blob_name}")
+    except Exception as e:
+        print(f"[!] Failed to upload {local_file_path} to GCS: {e}")
+        
+            
 def main():
     # **Detect if running inside Docker**
     running_in_docker = os.path.exists("/.dockerenv")
@@ -164,8 +177,10 @@ def main():
     for filename, url in PROJECTIONS_URLS.items():
         print(f"\n[⚡] Processing: {filename}")
         save_path = os.path.join(SAVE_FOLDER, f"{filename}.xlsx") if "fangraphs" in filename else os.path.join(SAVE_FOLDER_AUC, f"{filename}.xlsx")
+        gcs_blob_name = f"projections/{filename}.xlsx" if "fangraphs" in filename else f"auction_calculator_exports/{filename}.xlsx"
         download_fangraphs_csv(driver, url, save_path)
-
+        upload_to_bucket(save_path, gcs_blob_name)
+        
     print("\n[✔] Done!")
     driver.quit()
 

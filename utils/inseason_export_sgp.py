@@ -3,21 +3,13 @@ from google.cloud import storage
 import os
 import pandas as pd
 
+from utils.common_utils import upload_to_bucket
+
 export_cols = ['PA', 'SGP_R', 'SGP_HR', 'SGP_RBI', 'SGP_SB', 'SGP_OBP', 'SGP_SLG', 'Total_SGP_wSB', 'Total_SGP']
 index_cols = ['Name','PlayerId']
 
-GCS_BUCKET = "fantasysgpsystem-outputs"
-
-def upload_to_gcs(bucket_name, source_file_path, file):
-    client = storage.Client()
-    bucket = client.bucket(bucket_name)
-    blob = bucket.blob(file)
-    blob.upload_from_filename(source_file_path)
-    print(f"Uploaded {source_file_path} to gs://{bucket_name}/{file}")
     
 def export_sgp(df,sb,dir):
-    running_in_docker = os.path.exists("/.dockerenv")
-    
     if 'td' == dir :
         save_loc = "stats"
     elif 'ros' == dir:
@@ -45,10 +37,9 @@ def export_sgp(df,sb,dir):
     with pd.ExcelWriter(full_path) as writer:
         df[['Name', 'PlayerId', 'PA', 'SGP_R', 'SGP_HR', 'SGP_RBI', 'SGP_SB', 'SGP_OBP', 'SGP_SLG', 'Total_SGP_wSB', 'Total_SGP']].to_excel(writer, sheet_name='Hitters', index=False)
     
-    # Upload to GCS if bucket is provided
-    if running_in_docker:
-        file = f"{save_loc}/{file_name}"
-        upload_to_gcs(GCS_BUCKET, full_path, file)
+    gcs_blob_path = f"{save_loc}/{file_name}"
+    upload_to_bucket(full_path, gcs_blob_path)
+
         
     return file_name
         
