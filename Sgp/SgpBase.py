@@ -26,9 +26,9 @@ class SgpBase:
         # === Download from GCS if running in Docker ===
         if is_running_in_docker():
             print("[*] Downloading data from GCS...")
-            #download_from_bucket("fantasysgpsystem-outputs", 
-            #                     f"projections/fangraphs_{player_type}_{self.proj}.xlsx", 
-            #                     f"projections/fangraphs_{player_type}_{self.proj}.xlsx")
+            download_from_bucket("fantasysgpsystem-outputs", 
+                                 f"projections/fangraphs_{player_type}_{self.proj}.xlsx", 
+                                 f"projections/fangraphs_{player_type}_{self.proj}.xlsx")
             download_from_bucket("fantasysgpsystem-outputs", 
                                  f"auction_calculator_exports/auc_calc_{player_type}_{self.proj}.xlsx", 
                                  f"auction_calculator_exports/auc_calc_{player_type}_{self.proj}.xlsx")
