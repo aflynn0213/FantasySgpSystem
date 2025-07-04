@@ -27,7 +27,7 @@ if __name__ == "__main__":
     
     sgp_hit = SgpHitters(proj=args.hitter_proj,sb_included=args.sb_included,weeks=args.weeks_completed) 
     df = sgp_hit.sgp_df.copy()
-    print(f'{0} weeks completed', args.weeks_completed)
+    print(f'{args.weeks_completed} weeks completed' )
     cols_included = list(range(0,6))
     if (not args.sb_included):
         cols_included.remove(3)

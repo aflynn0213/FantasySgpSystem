@@ -6,11 +6,32 @@ from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
+from selenium.common.exceptions import TimeoutException
+from selenium.common.exceptions import StaleElementReferenceException
+
 from webdriver_manager.chrome import ChromeDriverManager
 from dotenv import load_dotenv
+import shutil
+import pickle
+from pathlib import Path
 
+import subprocess
+
+from google.cloud import storage
+from utils.docker_running import is_running_in_docker
+from utils.common_utils import (download_fangraphs_csv, 
+                                download_from_bucket, 
+                                debug_docker_selenium, 
+                                upload_to_bucket)
+
+# Constants
 SELENIUM_GRID_URL = "http://selenium:4444/wd/hub"
+
+BUCKET_NAME = "fantasysgpsystem-outputs"
 
 # Load environment variables from a .env file
 load_dotenv()
@@ -23,8 +44,6 @@ if not FANGRAPHS_USERNAME or not FANGRAPHS_PASSWORD:
 
 HOME_DIR = os.path.expanduser("~")
 
-# Set the downloads folder
-DOWNLOAD_FOLDER = os.path.join(HOME_DIR, "Downloads")
 
 # URLs
 LOGIN_URL = "https://blogs.fangraphs.com/wp-login.php"
@@ -46,6 +65,41 @@ SAVE_FOLDER_ROS = os.path.join(BASE_DIR, "ros")
 os.makedirs(SAVE_FOLDER, exist_ok=True)
 os.makedirs(SAVE_FOLDER_AUC,exist_ok=True)
 
+def is_running_in_docker():
+    env_flag = os.getenv("RUNNING_IN_DOCKER", "").lower()
+    if env_flag == "true":
+        return True
+
+    # Optional fallback logic
+    try:
+        if os.path.exists("/.dockerenv"):
+            return True
+        with open("/proc/1/cgroup", "rt") as f:
+            return any(kw in f.read() for kw in ["docker", "kubepods", "containerd", "cloud-run"])
+    except Exception:
+        return False
+
+if is_running_in_docker():
+    DOWNLOAD_FOLDER = "/downloads"
+else:
+    DOWNLOAD_FOLDER = os.path.join(HOME_DIR, "Downloads")
+
+cookie_path = "/tmp/cookies.pkl" if is_running_in_docker() else  "./cookies.pkl"
+
+
+
+def get_chrome_major_version():
+    try:
+        result = subprocess.run(["google-chrome", "--version"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        version_str = result.stdout.strip()
+        if version_str.startswith("Google Chrome"):
+            major_version = int(version_str.split()[2].split('.')[0])
+            return major_version
+    except Exception as e:
+        print(f"[!] Failed to detect Chrome version: {e}")
+    return None
+
+
 def login_to_fangraphs(driver):
         
     """Logs into FanGraphs."""
@@ -53,126 +107,146 @@ def login_to_fangraphs(driver):
     driver.get(LOGIN_URL)
     time.sleep(3)
 
-    # username
-    print("[*] Entering username...")
-    username_field = driver.find_element(By.ID, "user_login")
-    username_field.send_keys(FANGRAPHS_USERNAME)
+    if (not is_running_in_docker()):
+        # username
+        print("[*] Entering username...")
+        username_field = driver.find_element(By.ID, "user_login")
+        username_field.send_keys(FANGRAPHS_USERNAME)
 
-    # password
-    print("[*] Entering password...")
-    password_field = driver.find_element(By.ID, "user_pass")
-    password_field.send_keys(FANGRAPHS_PASSWORD)
-    password_field.send_keys(Keys.RETURN)  # Press Enter to log in
+        # password
+        print("[*] Entering password...")
+        password_field = driver.find_element(By.ID, "user_pass")
+        password_field.send_keys(FANGRAPHS_PASSWORD)
+        password_field.send_keys(Keys.RETURN)  # Press Enter to log in
 
-    time.sleep(5)  # Wait for login to process
-    print("[✔] Successfully logged in!")
+        time.sleep(5)  # Wait for login to process
+        print("[✔] Successfully logged in!")
 
-def download_fangraphs_csv(driver, url, save_path):
-    """Navigates to FanGraphs projections page, clicks 'Export Data', and downloads CSV."""
-    print(f"[*] Navigating to: {url}")
-    driver.get(url)
-    time.sleep(5)
+    else:
+        wait = WebDriverWait(driver, 20)
 
-    try:
-        # Find and click the "Export Data" button
-        print("[*] Searching for 'Export Data' button...")
-        export_button = driver.find_element(By.LINK_TEXT, "Export Data")
-        
-        # Scroll to the button (optional)
-        driver.execute_script("arguments[0].scrollIntoView();", export_button)
-        time.sleep(1)
-
-        # Click using JavaScript to bypass UI blocking issues
-        print("[✔] Clicking 'Export Data' button via JavaScript...")
-        driver.execute_script("arguments[0].click();", export_button)
-    except Exception as e:
-        print(f"[ERROR] Could not find or click the 'Export Data' button: {e}")
-        return
-
-    # Wait for the file to download
-    time.sleep(10)  
-
-    # Find the latest downloaded file
-    files = sorted(
-        os.listdir(DOWNLOAD_FOLDER), 
-        key=lambda x: os.path.getmtime(os.path.join(DOWNLOAD_FOLDER, x)), 
-        reverse=True
-    )
-    
-    csv_file = next((f for f in files if f.endswith(".csv")), None)
-
-    if not csv_file:
-        print("[ERROR] No CSV file found after download.")
-        return
-
-    csv_path = os.path.join(DOWNLOAD_FOLDER, csv_file)
-    print(f"[✔] Downloaded file: {csv_path}")
-
-    # Convert CSV to Excel
-    df = pd.read_csv(csv_path)
-    os.makedirs(os.path.dirname(save_path), exist_ok=True)
-    df.to_excel(save_path, index=False)
-    os.remove(csv_path)
-    print(f"[✔] File saved: {save_path}")
-
-def wait_for_selenium(timeout=1500):
-    """Wait for Selenium Grid to be available."""
-    print("[*] Waiting for Selenium Grid to be ready...")
-    for i in range(timeout):
         try:
-            response = requests.get(SELENIUM_GRID_URL)
-            if response.status_code == 200 and response.json().get("value", {}).get("ready", False):
-                print("[✔] Selenium Grid is ready!")
-                return
-        except requests.exceptions.RequestException:
-            pass  # Keep trying
-        
-        print(f"[*] Selenium not ready, retrying... ({i+1}/{timeout})")
-        time.sleep(1)  # Wait 1 second before retrying
+            # Wait for username field
+            print("[*] Waiting for username field...")
+            username_field = wait.until(EC.presence_of_element_located((By.ID, "user_login")))
+            username_field.clear()
+            time.sleep(3)
+            username_field.send_keys(FANGRAPHS_USERNAME)
 
-    print("[ERROR] Selenium did not start in time. Exiting...")
-    exit(1)
-    
+            # Wait for password field
+            print("[*] Waiting for password field...")
+            time.sleep(10)
+            password_field = wait.until(EC.presence_of_element_located((By.ID, "user_pass")))
+            password_field.clear()
+            time.sleep(3)
+            password_field.send_keys(FANGRAPHS_PASSWORD)
+            time.sleep(5)
+            password_field.send_keys(Keys.RETURN)  # Submit the form
+
+            print("[✔] Successfully logged in!")
+            
+        except TimeoutException:
+            print("[!] Timeout waiting for login fields — page may not have loaded correctly.")
+            debug_docker_selenium(driver, label="login_error", bucket="fantasysgpsystem-outputs")
+            raise
+        except StaleElementReferenceException:
+            print("[!] Stale element reference — retrying login sequence...")
+            debug_docker_selenium(driver, label="login_error", bucket="fantasysgpsystem-outputs")
+            return login_to_fangraphs(driver)
+        
+        
 def main():
-    # **Detect if running inside Docker**
-    running_in_docker = os.path.exists("/.dockerenv")
-    options = Options()
     
-    if running_in_docker:
-        wait_for_selenium()
+    print("[DEBUG] Chrome:", shutil.which("google-chrome"))
+    print("[DEBUG] Chromedriver:", shutil.which("chromedriver"))
+    
+    if is_running_in_docker():
+        print("[DEBUG] ******Inside of docker container*******")
+        options = Options()
+        
+        prefs = {
+                    "download.default_directory": DOWNLOAD_FOLDER,
+                    "download.prompt_for_download": False,
+                    "download.directory_upgrade": True,
+                    "safebrowsing.enabled": True
+                }
+        
+        options.add_experimental_option("prefs", prefs)
+        options.add_experimental_option("excludeSwitches", ["enable-automation"])
+        options.add_experimental_option("useAutomationExtension", False)
+        
+        options.binary_location = "/usr/bin/google-chrome"
+        
+        options.add_argument("--user-data-dir=/chrome_profile")
+        options.add_argument("--headless=new")
+        options.add_argument("--no-sandbox")
+        options.add_argument("--disable-dev-shm-usage")
+        options.add_argument("--disable-gpu")
+        options.add_argument("--disable-blink-features=AutomationControlled")
+        options.add_argument("--disable-infobars")
+        
+        driver = webdriver.Chrome(service=Service("/usr/local/bin/chromedriver"), options=options)
+        
+        driver.get("https://www.fangraphs.com/")
+        time.sleep(3)
+
+        # Check if profile session is still logged in
+        if "Sign In" not in driver.page_source:
+            print("[✔] Chrome profile login successful")
+        else:
+            print("[!] Chrome profile login failed, falling back to manual login")
+            login_to_fangraphs(driver)
+                
+    else:
+        print("[DEBUG] ******Outside of docker container*******")
+        profile_path = Path("./chrome_profile").resolve()
+        os.makedirs(profile_path, exist_ok=True)
         
         options = Options()
-        options.add_argument("--headless=new")  
-        options.add_argument("--no-sandbox")  # Required inside Docker
-        options.add_argument("--disable-dev-shm-usage")  
-        options.add_argument("--disable-gpu")  # Disable GPU acceleration
-
-        print("[*] Running inside Docker, using pre-installed ChromeDriver...")
-        driver = webdriver.Remote(command_executor=SELENIUM_GRID_URL, options=options)
-        
-    else:
+    
         options.add_argument("--start-maximized")
+        options.add_argument(f"--user-data-dir={profile_path}")
 
         # Set up WebDriver
         driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
 
-    # Log in to FanGraphs
-    login_to_fangraphs(driver)
+        # Log in to FanGraphs
+        login_to_fangraphs(driver)
 
     # Download each dataset
     for filename, url in PROJECTIONS_URLS.items():
         print(f"\n[⚡] Processing: {filename}")
+        
         if "auc_calc" in filename:
             save_path = os.path.join(SAVE_FOLDER_AUC, f"{filename}.xlsx") 
+            gcs_blob_name = f"auction_calculator_exports/{filename}.xlsx"
+        elif "ros" in filename:
+            save_path = os.path.join(SAVE_FOLDER_ROS, f"{filename}.xlsx") 
+            gcs_blob_name = f"ros/{filename}.xlsx"
+        elif "stats" in filename:
+            save_path = os.path.join(SAVE_FOLDER, f"{filename}.xlsx") 
+            gcs_blob_name = f"stats/{filename}.xlsx"
         else:
-            if "stats" in filename:
-                save_path = os.path.join(SAVE_FOLDER, f"{filename}.xlsx") 
-            elif "ros" in filename:
-                save_path = os.path.join(SAVE_FOLDER_ROS, f"{filename}.xlsx") 
-        download_fangraphs_csv(driver, url, save_path)
+            continue  # Skip unknown file types
+        
+        download_fangraphs_csv(DOWNLOAD_FOLDER, driver, url, save_path)
+
+        # Upload to GCS
+        upload_to_bucket(save_path, gcs_blob_name)
+        
+    if not is_running_in_docker():
+        input("Press Enter to close browser and save profile...")
+        driver.quit()
+
+        if os.path.exists(profile_path):
+            print(f"[✅] Profile folder found: {profile_path}")
+        else:
+            print("[❌] chrome_profile directory NOT FOUND")
+    else:
+        driver.quit()
 
     print("\n[✔] Done!")
-    driver.quit()
-
+    
+    
 if __name__ == "__main__":
     main()
