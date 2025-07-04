@@ -12,4 +12,5 @@ ros/
 stats/
 rostered.xlsx
 temp_players.xlsx
-chrome_profile/
+chrome_profile/fantasysgpsystem-key.json
+gcp/sgp-gcs-access.json
