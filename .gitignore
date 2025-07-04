@@ -12,7 +12,8 @@ ros/
 stats/
 rostered.xlsx
 temp_players.xlsx
-chrome_profile/fantasysgpsystem-key.json
-gcp/sgp-gcs-access.json
+chrome_profile/
 fantasysgpsystem-key.json
 gcp/sgp-gcs-access.json
+
+
