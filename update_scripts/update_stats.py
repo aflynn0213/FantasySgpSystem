@@ -1,4 +1,8 @@
 import os
+import sys
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 import time
 import pandas as pd
 import requests
@@ -27,6 +31,8 @@ from utils.common_utils import (download_fangraphs_csv,
                                 download_from_bucket, 
                                 debug_docker_selenium, 
                                 upload_to_bucket)
+
+
 
 # Constants
 SELENIUM_GRID_URL = "http://selenium:4444/wd/hub"
