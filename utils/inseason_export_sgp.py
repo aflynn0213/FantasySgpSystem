@@ -18,7 +18,7 @@ def export_sgp(df,sb,dir):
 
     column_missing = [col for col in export_cols if col not in df.columns]
     index_missing = [index for index in index_cols if index not in list(df.index.names)]
-    
+
     if column_missing:
         raise ValueError(f"{column_missing} Missing From DataFrame")
     elif index_missing:

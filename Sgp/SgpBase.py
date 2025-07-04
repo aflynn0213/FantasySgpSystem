@@ -65,7 +65,7 @@ class SgpBase:
 
             print("[*] Loading auction calculator data...")
             self.auc_calc = pd.read_excel(f"auction_calculator_exports/auc_calc_{player_type}_{self.proj}_ros.xlsx", sheet_name=0)
-        
+
         self.stats["PlayerId"] = self.stats["PlayerId"].astype(str) 
         self.proj_read['PlayerId'] = self.proj_read['PlayerId'].astype(str)
         self.auc_calc["PlayerId"] = self.auc_calc["PlayerId"].astype(str)
