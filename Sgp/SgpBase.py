@@ -1,3 +1,4 @@
+from typing import List, Union
 import pandas as pd
 from openpyxl import load_workbook
 import string
@@ -76,26 +77,48 @@ class SgpBase:
 
         print(f"[✔] SgpBase initialized for {player_type}.")
     
-    def cat_calc_sgp(self,category:string):
-        return (self.stats[category] - (self.weeks/26)*self.replacement_levels[category]) / ((self.weeks/26)*self.cat_stds[category])
+    def _cat_calc_sgp(self,categories: List[str]):
+        factor = self.weeks / 26
+        sgp = (self.stats[categories] - factor*self.replacement_levels[categories]) / (factor*self.cat_stds[categories])
+        sgp.columns = [f'SGP_{cat}' for cat in categories] 
+        return sgp
+
+    def _rate_calc_sgp(self,categories: List[tuple]):
+        factor = self.weeks / 26
+        
+        result = {}
+
+        result = { f'SGP_{cat}': (  (factor*self.team_value[f'{cat}_{opps}'] + self.stats[f'{cat}']*self.stats[f'{opps}'] ) 
+                                     / (factor*self.team_opportunities[f'{opps}']+self.stats[f'{opps}']) - self.replacement_levels[f'{cat}']  ) 
+                                    / self.cat_std[f'{cat}'] for cat,opps in categories }
+        ''' if opportunities == 'AB':
+                team_cat = 'SLG_AB'
+                player_opps = self.stats[opportunities]
+            elif opportunities == 'PA':
+                team_cat = 'OBP_PA'
+                player_opps = self.stats[opportunities] - self.stats['SH']
+
+            player_val = self.stats[cat]*player_opps
+            team_val_wo_average_player = self.team_value[team_cat]
+            total_opps = (self.weeks/26)*self.team_opportunities[opportunities] + player_opps
+        '''
+        #return (((self.weeks/26)*team_val_wo_average_player+player_val)/(total_opps) - self.replacement_levels[cat])/self.cat_stds[cat]
+
+        return pd.DataFrame(result)
     
-    def rate_calc_sgp(self,cat:string,opportunities:string):
-        """Processes rate stats to determine SGPs""" 
-        raise NotImplementedError("Subclasses must implement rate_calc_sgp()")
-    
-    def process_sgp(self):
+    def _process_sgp(self):
         """Processes SGP for counting and rate stats (to be overridden in subclasses)."""
         raise NotImplementedError("Subclasses must implement process_sgp()")
 
-    def team_rate_values_processing(self, ip_adj=None):
+    def _team_rate_values_processing(self, ip_adj=None):
         """Processes team rate values for advanced SGP calculations (to be overridden in subclasses)."""
         raise NotImplementedError("Subclasses must implement team_rate_values_processing()")
 
-    def load_replacement_levels(self):
+    def _load_replacement_levels(self):
         """Loads replacement level values from the Excel sheet."""
         return {}
 
-    def load_category_stds(self):
+    def _load_category_stds(self):
         """Loads category standard deviations from the Excel sheet."""
         return {}
 

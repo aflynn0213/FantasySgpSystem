@@ -1,3 +1,4 @@
+from typing import List
 import pandas as pd
 import numpy as np
 import string
@@ -13,21 +14,21 @@ class SgpPitchers(SgpBase):
         super().__init__(proj, "pitching")
         
         if (ip_adj):
-            print("[*] Adjusting pitcher playing time...")
-            self.adjust_playing_time(ip_adj)
+            print("Adjusting pitcher playing time...")
+            self.__adjust_playing_time(ip_adj)
             
-        print("[*] Loading replacement levels and category standard deviations...")
-        self.replacement_levels = self.load_replacement_levels()
-        self.cat_stds = self.load_category_stds()
+        print("Loading replacement levels and category standard deviations...")
+        self.replacement_levels = self._load_replacement_levels()
+        self.cat_stds = self._load_category_stds()
         
         self.team_opportunities = {}
         self.team_value = {}
         
-        print("[*] Loading auction calculator data for pitchers...")
-        self.team_rate_values_processing(ip_adj)
+        print("Loading auction calculator data for pitchers...")
+        self._team_rate_values_processing(ip_adj)
         
-        print("[*] Processing pitchers SGP...")
-        self.process_sgp()
+        print("Processing pitchers SGP...")
+        self._process_sgp()
         
         self.sgp_df['IP'] = self.stats['IP']
         self.sgp_df['GS'] = self.stats['GS']
@@ -35,47 +36,44 @@ class SgpPitchers(SgpBase):
         self.sgp_df[['Name', 'PlayerId']] = self.stats[['Name', 'PlayerId']]
         self.sgp_df.set_index(['Name','PlayerId'], inplace=True)
         
-        print(f"[✔] SgpPitchers initialized")
-        
-    def cat_calc_sgp(self,projection,cat:string):
-        return (projection - self.replacement_levels[cat]) / self.cat_stds[cat]
+        print(f"***SgpPitchers initialized***")
 
-    def rate_calc_sgp(self,cat,opps):
-        if(cat=='ERA'):
-            val = 9*self.stats['ER']
-        elif(cat=='WHIP'):
-            val = self.stats['H']+self.stats['BB']
-        elif(cat=="K/BB"):
-            val = self.stats['SO']
-        else:
-            raise NotImplementedError("Category outside of the league's pitching categories used as input to rate_calc_sgp")
-        
-        multiplier = 1
-        if (cat == 'ERA'):
-            multiplier = 9
-            
-        team_val_wo_average_player = multiplier*self.team_value[cat]
-        total_opps = self.team_opportunities[opps] + self.stats[opps]
-        return ((team_val_wo_average_player+val)/(total_opps) - self.replacement_levels[cat])/self.cat_stds[cat]
-
-
-    def process_sgp(self):
-        print("[*] Calculating SGP for counting stats (SO, QS, SV_HLD)...")
-        self.sgp_df = pd.DataFrame()
-        for cat in ['SO', 'QS', 'SV_HLD']:
-            if cat == 'SV_HLD':
-                val = self.stats['SV'] + self.stats['HLD']
+    def _rate_calc_sgp(self,categories: List[tuple]):
+        result = {}
+        for cat,opps in categories:
+            if(cat=='ERA'):
+                val = 9*self.stats['ER']
+            elif(cat=='WHIP'):
+                val = self.stats['H']+self.stats['BB']
+            elif(cat=="K/BB"):
+                val = self.stats['SO']
             else:
-                val = self.stats[cat]
-            self.sgp_df[f'SGP_{cat}'] = self.cat_calc_sgp(val,cat)
+                raise NotImplementedError("Category outside of the league's pitching categories used as input to rate_calc_sgp")
             
-        print("[*] Calculating SGP for rate stats (ERA, WHIP, K/BB)...")
-        for cat, opps in [('ERA','IP'), ('WHIP', 'IP'), ('K/BB', 'BB')]:
-            self.sgp_df[f'SGP_{cat}'] = self.rate_calc_sgp(cat,opps)
+            multiplier = 1
+            if (cat == 'ERA'):
+                multiplier = 9
+                
+            team_val_wo_average_player = multiplier*self.team_value[cat]
+            total_opps = self.team_opportunities[opps] + self.stats[opps]
+            
+            result[f'SGP_{cat}'] = ((team_val_wo_average_player+val)/(total_opps) - self.replacement_levels[cat])/self.cat_stds[cat]
+
+        return pd.DataFrame(result)
+
+    def _process_sgp(self):
+        print("Calculating SGP for counting stats (SO, QS, SV_HLD)...")
+        counting_stats = ['SO', 'QS', 'SV_HLD']
+        self.stats['SV_HLD'] = self.stats['SV'] + self.stats['HLD']
+        self.sgp_df = self.cat_calc_sgp(counting_stats)
+            
+        print("Calculating SGP for rate stats (ERA, WHIP, K/BB)...")
+        rate_stats = [('ERA','IP'), ('WHIP', 'IP'), ('K/BB', 'BB')]
+        self.sgp_df = pd.concat([self.sgp_df,self.rate_calc_sgp(rate_stats)])
  
-        print("[✔] Pitchers SGP calculation complete.")
+        print("***Pitchers SGP calculation complete.***")
         
-    def team_rate_values_processing(self,ip_adj):
+    def _team_rate_values_processing(self,ip_adj):
         auc_sheet = self.proj if ip_adj == None else ip_adj
         temp_df = pd.read_excel(f"auction_calculator_exports/auc_calc_pitching_{auc_sheet}.xlsx",sheet_name=0)
         
@@ -94,19 +92,19 @@ class SgpPitchers(SgpBase):
             self.team_opportunities[val] = avg_team_opps_wo_replacement
             self.team_value[cat] = avg_team_value_wo_replacement
             
-    def load_replacement_levels(self):
+    def _load_replacement_levels(self):
         return {
             'SO': self.sheet['W26'].value,'QS': self.sheet['X26'].value, 'SV_HLD': self.sheet['AB26'].value, 
             'ERA': self.sheet['Y26'].value,'WHIP': self.sheet['Z26'].value, 'K/BB': self.sheet['AA26'].value
         }
         
-    def load_category_stds(self):
+    def _load_category_stds(self):
         return {
             'SO': self.sheet['W27'].value,'QS': self.sheet['X27'].value, 'SV_HLD': self.sheet['AB27'].value, 
             'ERA': self.sheet['Y27'].value, 'WHIP': self.sheet['Z27'].value, 'K/BB': self.sheet['AA27'].value
         }
             
-    def adjust_playing_time(self,ip_adj):
+    def __adjust_playing_time(self,ip_adj):
         play_time_df = pd.read_excel(f'projections/fangraphs_pitching_{ip_adj}.xlsx', sheet_name=0)
         play_time_df = play_time_df.rename(columns={'IP': 'new_IP', 'TBF': 'new_TBF'})
         self.stats = self.stats.merge( play_time_df[['PlayerId', 'new_IP', 'new_TBF']],  
