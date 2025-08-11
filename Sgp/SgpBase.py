@@ -79,7 +79,11 @@ class SgpBase:
     
     def _cat_calc_sgp(self,categories: List[str]):
         factor = self.weeks / 26
-        sgp = (self.stats[categories] - factor*self.replacement_levels[categories]) / (factor*self.cat_stds[categories])
+        replacement = pd.Series(self.replacement_levels).reindex(categories)
+        stds = pd.Series(self.cat_stds).reindex(categories)
+        
+        # Calculate SGP for counting stats
+        sgp = self.stats[categories].sub(factor*replacement,axis=1).div(factor*stds,axis=1)
         sgp.columns = [f'SGP_{cat}' for cat in categories] 
         return sgp
 
@@ -90,7 +94,7 @@ class SgpBase:
 
         result = { f'SGP_{cat}': (  (factor*self.team_value[f'{cat}_{opps}'] + self.stats[f'{cat}']*self.stats[f'{opps}'] ) 
                                      / (factor*self.team_opportunities[f'{opps}']+self.stats[f'{opps}']) - self.replacement_levels[f'{cat}']  ) 
-                                    / self.cat_std[f'{cat}'] for cat,opps in categories }
+                                    / self.cat_stds[f'{cat}'] for cat,opps in categories }
         ''' if opportunities == 'AB':
                 team_cat = 'SLG_AB'
                 player_opps = self.stats[opportunities]
