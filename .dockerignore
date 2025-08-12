@@ -28,3 +28,11 @@ Thumbs.db
 .vscode/
 *.zip
 
+!included/**
+!Sgp/**
+!processor/**
+!utils/**
+!sgp_processing/**
+
+UI/
+
