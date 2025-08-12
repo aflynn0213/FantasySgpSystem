@@ -1,0 +1,7 @@
+streamlit
+pandas
+google-cloud-storage
+numpy
+google-cloud-bigquery
+openpyxl
+python-dotenv
