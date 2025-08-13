@@ -12,11 +12,9 @@ ros/
 stats/
 rostered.xlsx
 temp_players.xlsx
-<<<<<<< HEAD
 chrome_profile/
 fantasysgpsystem-key.json
 gcp/sgp-gcs-access.json
+*.dot
+*.png
 
-
-=======
->>>>>>> origin/master
