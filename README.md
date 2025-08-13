@@ -30,10 +30,7 @@ A fair quesiton at this point is how much added value does this bring over the s
 
 ### Week factor
 
-Let \(w\) be weeks completed (out of a 26-week season). Define the week factor
-\[
-f = \frac{w}{26}.
-\]
+`The week factor is $f=\frac{w}{26}$.`
 
 ### Notation
 
