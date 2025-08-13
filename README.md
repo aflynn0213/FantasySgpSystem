@@ -37,19 +37,6 @@ $$
 f=\frac{w}{26}.
 $$
 
-$$
-\mathrm{SGP}_{c}
-= \frac{\,x_{c}^{(p)} \;-\; f \cdot L_{c}^{\text{team}}\,}{D_{c}},
-\qquad
-f=\frac{w}{26}.
-$$
-
-Optionally, if you model last place as “per player” (e.g., 13 players):
-$$
-\mathrm{SGP}_{c}
-= \frac{\,x_{c}^{(p)} \;-\; f \cdot \dfrac{L_{c}^{\text{team}}}{13}\,}{D_{c}}.
-$$
-
 
 ### Original Workbook 
 The original (not up to date) valution system workbook itself can be found in the excel macro-enabled workbook titled LeagueStatsSGPInvest.xlsm. Included in this workbook is all of the pre-season and weekly rest of the season updated player valuations along with my league's historical data, and this workbook will continued to be improved upon and soon will become outputs from a python script that will ensure that this is periodically updated and so that the computations can be abstracted out and sped up.  It was created in the off-season prior to the 2024 MLB season and contains multiple in-season updates in order to continously drive actionable decisions for my team. 
