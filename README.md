@@ -1,4 +1,8 @@
-# SGP-based Value Above Average Last Place Player
+#FantasySgpSystem
+<img width="873" height="631" alt="classes_FantasySgpSystem" src="https://github.com/user-attachments/assets/fdefd6d8-1232-435a-8a44-dd8b01c6389e" />
+
+
+## SGP-based Value Above Average Last Place Player
 
 ### High-level overview
 This directory contains the fantasy SGP valuation system I created and use directly in my pre-season draft values, and also in-season to inform transactions.   
