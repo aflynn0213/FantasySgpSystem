@@ -7,6 +7,7 @@ Latest Version: https://sgp-viewer-110810475909.us-central1.run.app/
 ### Rest of Season SGP Projections Preview
 <img width="852" height="609" alt="image" src="https://github.com/user-attachments/assets/3889234f-53a5-4163-a176-c5be25ac6133" />
 
+### Class and Package Diagrams 
 <img width="1089" height="784" alt="classes_FantasySgpSystem" src="https://github.com/user-attachments/assets/4cf69fd4-be0c-45dc-afc7-f4753203ed5d" />
 
 <img width="699" height="443" alt="packages_FantasySgpSystem" src="https://github.com/user-attachments/assets/d9379ee3-16a0-4ab6-9624-1e398f6b31f3" />
