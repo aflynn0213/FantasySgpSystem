@@ -29,23 +29,8 @@ A fair quesiton at this point is how much added value does this bring over the s
 ### SGP Calculations
 
 ### Week factor
-
-`The week factor is $f=\frac{w}{26}$.`
-
-### Notation
-
-| Symbol | Meaning |
-|---|---|
-| \(x_c^{(p)}\) | Player’s **counting** stat in category \(c\) (e.g., HR, R, RBI, SB, W, SV, K). |
-| \(r_c^{(p)}\) | Player’s **rate** in category \(c\) (e.g., AVG, OBP, SLG, ERA, WHIP). |
-| \(o_c^{(p)}\) | Player’s **opportunities** for rate \(c\) (e.g., AB or PA for hitting; IP for pitching). |
-| \(L_c^{\mathrm{team}}\) | Season **last-place team** value for category \(c\), from a recency-weighted historical best-fit line. |
-| \(R_c^{\mathrm{team}}\) | Season **last-place team rate** for category \(c\), from the same best-fit line. |
-| \(O_c^{\mathrm{team}}\) | Season **average team opportunities** (e.g., AB/PA/IP) for category \(c\). |
-| \(D_c\) | SGP denominator for \(c\): average difference between adjacent teams in the standings (slope-derived or adjacency median). |
-| \(N_{\text{players}}\) *(optional)* | Per-player scaling factor (use \(13\) if you want last-place expressed per player; otherwise omit). |
-
-
+The week factor is $f=\frac{w}{26}$ where $w$ is weeks completed for up-to-date SGP calculations, $w$ = 26 - weeks completed for rest-of-season projections, and $w=26$ for pre-season projections.
+ 
 ### Original Workbook 
 The original (not up to date) valution system workbook itself can be found in the excel macro-enabled workbook titled LeagueStatsSGPInvest.xlsm. Included in this workbook is all of the pre-season and weekly rest of the season updated player valuations along with my league's historical data, and this workbook will continued to be improved upon and soon will become outputs from a python script that will ensure that this is periodically updated and so that the computations can be abstracted out and sped up.  It was created in the off-season prior to the 2024 MLB season and contains multiple in-season updates in order to continously drive actionable decisions for my team. 
 
