@@ -27,6 +27,9 @@ In fact, for just these two categories for these two specific hypothetical cases
 A fair quesiton at this point is how much added value does this bring over the standard SGP calculations, and the answer is at this point I have not looked into that, and I'm honestly willing to bet it isn't as big of a difference as I'd hope it would be.  However, in theory this is more mathematically sound, even despite some major assumptions and faith in an accurate projection system and consistency in the league's tendencies/run environment which also hold true with the original SGP system itself.    
    
 ### SGP Calculations
+
+$f=\frac{w}{26}$
+
 $$
 \mathrm{SGP}_{c}
 = \frac{\,x_{c}^{(p)} \;-\; f \cdot L_{c}^{\text{team}}\,}{D_{c}},
