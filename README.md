@@ -32,6 +32,13 @@ $f=\frac{w}{26}$
 
 $$
 \mathrm{SGP}_{c}
+= \frac{x_c^{(p)} - f \cdot L_c^{\mathrm{team}}}{D_c},
+\qquad
+f=\frac{w}{26}.
+$$
+
+$$
+\mathrm{SGP}_{c}
 = \frac{\,x_{c}^{(p)} \;-\; f \cdot L_{c}^{\text{team}}\,}{D_{c}},
 \qquad
 f=\frac{w}{26}.
