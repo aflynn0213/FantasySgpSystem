@@ -28,14 +28,25 @@ A fair quesiton at this point is how much added value does this bring over the s
    
 ### SGP Calculations
 
-$f=\frac{w}{26}$
+### Week factor
 
-$$
-\mathrm{SGP}_{c}
-= \frac{x_c^{(p)} - f \cdot L_c^{\mathrm{team}}}{D_c},
-\qquad
-f=\frac{w}{26}.
-$$
+Let \(w\) be weeks completed (out of a 26-week season). Define the week factor
+\[
+f = \frac{w}{26}.
+\]
+
+### Notation
+
+| Symbol | Meaning |
+|---|---|
+| \(x_c^{(p)}\) | Player’s **counting** stat in category \(c\) (e.g., HR, R, RBI, SB, W, SV, K). |
+| \(r_c^{(p)}\) | Player’s **rate** in category \(c\) (e.g., AVG, OBP, SLG, ERA, WHIP). |
+| \(o_c^{(p)}\) | Player’s **opportunities** for rate \(c\) (e.g., AB or PA for hitting; IP for pitching). |
+| \(L_c^{\mathrm{team}}\) | Season **last-place team** value for category \(c\), from a recency-weighted historical best-fit line. |
+| \(R_c^{\mathrm{team}}\) | Season **last-place team rate** for category \(c\), from the same best-fit line. |
+| \(O_c^{\mathrm{team}}\) | Season **average team opportunities** (e.g., AB/PA/IP) for category \(c\). |
+| \(D_c\) | SGP denominator for \(c\): average difference between adjacent teams in the standings (slope-derived or adjacency median). |
+| \(N_{\text{players}}\) *(optional)* | Per-player scaling factor (use \(13\) if you want last-place expressed per player; otherwise omit). |
 
 
 ### Original Workbook 
