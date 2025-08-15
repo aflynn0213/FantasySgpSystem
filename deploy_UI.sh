@@ -1,31 +1,50 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-PROJECT_ID="fantasysgpsystem"
+# --- Config ---
+PROJECT_ID="fantasysgpsystem"           # GCP project ID (lowercase)
 REGION="us-central1"
+LOCATION="$REGION"                      # Artifact Registry location
+AR_REPO="fantasysgpsystem"              # AR repo name (lowercase)
+IMAGE_NAME="sgp-viewer"
+
 DATE_TAG="v_$(date +%y%m%d)"
+GIT_SHA="$(git rev-parse --short HEAD || echo local)"
+IMMUTABLE_TAG="${DATE_TAG}-${GIT_SHA}"
 
 # UI (Streamlit)
 UI_SERVICE="sgp-viewer"
-UI_IMAGE="gcr.io/$PROJECT_ID/sgp-viewer:$DATE_TAG"
 UI_DOCKERFILE="ui/Dockerfile"
 UI_CONTEXT="ui"
-UI_SA="sgp-gcs-access@$PROJECT_ID.iam.gserviceaccount.com"    # read-only perms on bucket
+UI_SA="sgp-gcs-access@$PROJECT_ID.iam.gserviceaccount.com"
 
+# Optional: load .env
 if [[ -f .env ]]; then export $(grep -v '^#' .env | xargs); fi
 
 gcloud config set project "$PROJECT_ID" >/dev/null
-gcloud services enable run.googleapis.com cloudbuild.googleapis.com secretmanager.googleapis.com
+gcloud services enable \
+  run.googleapis.com \
+  cloudbuild.googleapis.com \
+  secretmanager.googleapis.com \
+  artifactregistry.googleapis.com
 
-gcloud auth configure-docker --quiet
+# Ensure AR repo exists (no-op if already there)
+gcloud artifacts repositories describe "$AR_REPO" --location="$LOCATION" >/dev/null 2>&1 || \
+gcloud artifacts repositories create "$AR_REPO" --repository-format=docker --location="$LOCATION" --description="Images for FantasySgpSystem"
 
-echo "[*] Building UI image:  $UI_IMAGE"
-docker build -f "$UI_DOCKERFILE" -t "$UI_IMAGE" "$UI_CONTEXT"
-docker push "$UI_IMAGE"
+# Docker auth for Artifact Registry
+gcloud auth configure-docker "${LOCATION}-docker.pkg.dev" --quiet
+
+IMAGE_BASE="${LOCATION}-docker.pkg.dev/${PROJECT_ID}/${AR_REPO}/${IMAGE_NAME}"
+
+echo "[*] Building UI image:  ${IMAGE_BASE}:${IMMUTABLE_TAG} (and ${DATE_TAG})"
+docker build -f "$UI_DOCKERFILE" -t "${IMAGE_BASE}:${IMMUTABLE_TAG}" -t "${IMAGE_BASE}:${DATE_TAG}" "$UI_CONTEXT"
+docker push "${IMAGE_BASE}:${IMMUTABLE_TAG}"
+docker push "${IMAGE_BASE}:${DATE_TAG}"
 
 echo "[*] Deploying UI service: $UI_SERVICE"
 gcloud run deploy "$UI_SERVICE" \
-  --image "$UI_IMAGE" \
+  --image "${IMAGE_BASE}:${IMMUTABLE_TAG}" \
   --region "$REGION" \
   --allow-unauthenticated \
   --service-account "$UI_SA" \
@@ -36,20 +55,10 @@ echo "[✓] UI ready: $UI_SERVICE"
 UI_URL="$(gcloud run services describe "$UI_SERVICE" \
   --region "$REGION" \
   --format='value(status.url)')"
-
 echo "[✓] UI URL: $UI_URL"
 
-# Optional: copy to clipboard
-case "$OSTYPE" in
-  msys*|cygwin*)  # Git Bash on Windows
-    echo -n "$UI_URL" | clip.exe ;;
-  darwin*)        # macOS
-    echo -n "$UI_URL" | pbcopy ;;
-  linux*)         # Linux with xclip
-    command -v xclip >/dev/null && echo -n "$UI_URL" | xclip -selection clipboard || true ;;
-esac
 
-# Optional: auto-open (Windows/macOS; Linux if xdg-open exists)
+# auto-open
 if command -v xdg-open >/dev/null; then xdg-open "$UI_URL" >/dev/null 2>&1 || true; fi
 case "$OSTYPE" in
   msys*|cygwin*) cmd.exe /c start "$UI_URL" >/dev/null 2>&1 || true ;;

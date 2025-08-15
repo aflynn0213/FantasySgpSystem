@@ -1,0 +1,46 @@
+# ui/cloudbuild.yaml
+substitutions:
+  _REGION: us-central1
+  _LOCATION: us-central1               # Artifact Registry location (match your region)
+  _REPO: fantasysgpsystem              # AR repo name (must be lowercase)
+  _SERVICE: sgp-viewer                 # Cloud Run service
+  _IMAGE_NAME: sgp-viewer              # image name within the repo
+
+steps:
+  # Build + tag with SHORT_SHA and date tag (v_YYMMDD), then push both
+  - name: gcr.io/cloud-builders/docker
+    dir: ui                             # run inside the ui/ folder
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        set -euo pipefail
+        DATE_TAG="v_$(date +%y%m%d)"
+        IMG="${_LOCATION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_IMAGE_NAME}"
+        echo "Building $IMG:$SHORT_SHA and $IMG:$DATE_TAG"
+        docker build -f Dockerfile -t "$IMG:$SHORT_SHA" -t "$IMG:$DATE_TAG" .
+        docker push "$IMG:$SHORT_SHA"
+        docker push "$IMG:$DATE_TAG"
+        echo "$DATE_TAG" > /workspace/DATE_TAG.txt  # pass date tag to next step
+
+  # Deploy (use the date tag to match your local workflow)
+  - name: gcr.io/google.com/cloudsdktool/cloud-sdk
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        set -euo pipefail
+        DATE_TAG="$(cat /workspace/DATE_TAG.txt)"
+        IMG="${_LOCATION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_IMAGE_NAME}:$DATE_TAG"
+        gcloud run deploy "${_SERVICE}" \
+          --image "$IMG" \
+          --region "${_REGION}" \
+          --allow-unauthenticated \
+          --service-account "sgp-gcs-access@$PROJECT_ID.iam.gserviceaccount.com" \
+          --memory "1Gi" \
+          --min-instances "0" \
+          --max-instances "3"
+
+images:
+  - "${_LOCATION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_IMAGE_NAME}:$SHORT_SHA"
+  - "${_LOCATION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_IMAGE_NAME}:v_${BUILD_ID}"  # bookkeeping only
