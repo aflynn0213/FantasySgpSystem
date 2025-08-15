@@ -2,10 +2,10 @@
 set -euo pipefail
 
 # --- Config ---
-PROJECT_ID="fantasysgpsystem"           # GCP project ID (lowercase)
+PROJECT_ID="fantasysgpsystem"           # GCP project ID
 REGION="us-central1"
 LOCATION="$REGION"                      # Artifact Registry location
-AR_REPO="fantasysgpsystem"              # AR repo name (lowercase)
+AR_REPO="fantasysgpsystem"              # AR repo name
 IMAGE_NAME="sgp-viewer"
 
 DATE_TAG="v_$(date +%y%m%d)"
@@ -18,7 +18,6 @@ UI_DOCKERFILE="ui/Dockerfile"
 UI_CONTEXT="ui"
 UI_SA="sgp-gcs-access@$PROJECT_ID.iam.gserviceaccount.com"
 
-# Optional: load .env
 if [[ -f .env ]]; then export $(grep -v '^#' .env | xargs); fi
 
 gcloud config set project "$PROJECT_ID" >/dev/null
@@ -51,7 +50,7 @@ gcloud run deploy "$UI_SERVICE" \
   --memory 1Gi --min-instances 0 --max-instances 3
 echo "[✓] UI ready: $UI_SERVICE"
 
-# ===== Get & show the URL =====
+# Get & show the URL
 UI_URL="$(gcloud run services describe "$UI_SERVICE" \
   --region "$REGION" \
   --format='value(status.url)')"
