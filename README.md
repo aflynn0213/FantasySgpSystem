@@ -116,7 +116,7 @@ $$
 - $r_{\text{SLG}}^{(p)} = TB,\qquad o_{\text{SLG}}^{(p)} = AB$
 
 **ERA**
-- $r_{\text{ERA}}^{(p)} = ER \cdot 9,\qquad o_{\text{ERA}}^{(p)} = IP$ (ERA Calculation is $\frac{ER\,9}{IP}$)
+- $r_{\text{ERA}}^{(p)} = ER \cdot 9,\qquad o_{\text{ERA}}^{(p)} = IP$ (ERA Calculation is $\frac{ER \cdot 9}{IP}$)
 
 **WHIP**
 - $r_{\text{WHIP}}^{(p)} = H + BB,\qquad o_{\text{WHIP}}^{(p)} = IP$
