@@ -9,9 +9,9 @@ NUM_STARTERS = 9
 NUM_RELIEVERS = 3
 
 class SgpPitchers(SgpBase):
-    def __init__(self, proj, ip_adj=None):
+    def __init__(self, proj, ip_adj=None, weeks=26) -> None:
         self.ip_adj = ip_adj
-        super().__init__(proj, "pitching")
+        super().__init__(proj, "pitching",weeks)
         
         if (ip_adj):
             print("Adjusting pitcher playing time...")
@@ -65,11 +65,11 @@ class SgpPitchers(SgpBase):
         print("Calculating SGP for counting stats (SO, QS, SV_HLD)...")
         counting_stats = ['SO', 'QS', 'SV_HLD']
         self.stats['SV_HLD'] = self.stats['SV'] + self.stats['HLD']
-        self.sgp_df = self.cat_calc_sgp(counting_stats)
+        self.sgp_df = self._cat_calc_sgp(counting_stats)
             
         print("Calculating SGP for rate stats (ERA, WHIP, K/BB)...")
         rate_stats = [('ERA','IP'), ('WHIP', 'IP'), ('K/BB', 'BB')]
-        self.sgp_df = pd.concat([self.sgp_df,self.rate_calc_sgp(rate_stats)])
+        self.sgp_df = pd.concat([self.sgp_df,self._rate_calc_sgp(rate_stats)])
  
         print("***Pitchers SGP calculation complete.***")
         

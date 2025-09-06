@@ -14,7 +14,7 @@ IMMUTABLE_TAG="${DATE_TAG}-${GIT_SHA}"
 
 # UI (Streamlit)
 UI_SERVICE="sgp-viewer"
-UI_DOCKERFILE="ui/Dockerfile"
+UI_DOCKERFILE="Dockerfile"
 UI_CONTEXT="ui"
 UI_SA="sgp-gcs-access@$PROJECT_ID.iam.gserviceaccount.com"
 

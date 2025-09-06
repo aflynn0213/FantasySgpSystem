@@ -8,7 +8,7 @@ from openpyxl.styles import Font
 class SgpProcessor:
     def __init__(self, sgp_hitters, sgp_pitchers):
 
-        print("[*] Initializing SGP Processor...")
+        print("Initializing SGP Processor...")
         self.weeks = sgp_hitters.weeks
         temp_hitters = sgp_hitters.sgp_df.copy()
         temp_pitchers = sgp_pitchers.sgp_df.copy()
@@ -24,9 +24,9 @@ class SgpProcessor:
                                  'OF': 'OF', 
                                  'DH': 'UTIL'}
          
-        print("[*] Preparing hitter data...")
+        print("Preparing hitter data...")
         self.hitters_df = self.prepare_data(temp_hitters, 'Hitter', sgp_hitters.sb_included, temp_auc_hit)
-        print("[*] Preparing pitcher data...")
+        print("Preparing pitcher data...")
         self.pitchers_df = self.prepare_data(temp_pitchers, 'Pitcher')
         
         cols_in_hitters_df = ['Name', 'PlayerId', 'Total_SGP', 'RL', 'VAR']
@@ -34,13 +34,13 @@ class SgpProcessor:
         if self.weeks < 26:
             cols_in_hitters_df = cols_in_hitters_df[:3]
             sorter = 'Total_SGP'
-        print("[*] Combining data for final rankings...")
+        print("Combining data for final rankings...")
         self.combined_df = pd.concat([
             self.hitters_df[cols_in_hitters_df],
             self.pitchers_df[['Name', 'PlayerId', 'Total_SGP', 'RL', 'VAR']]
         ]).groupby(['Name', 'PlayerId'], as_index=False).sum().sort_values(by=sorter, ascending=False)
         
-        print("[✔] SGP Data Prepared!")
+        print("SGP Data Prepared!")
     
     def prepare_data(self, df, player_type, sb_included=False, auc_calc = None):
         df = df.reset_index()
@@ -71,7 +71,7 @@ class SgpProcessor:
                 
                 df.to_excel('temp_players.xlsx')
                 
-                print("[*] Computing replacement level (RL)...")
+                print("Computing replacement level (RL)...")
                 df = self.compute_replacement_level(df)
             
         else:
@@ -80,7 +80,7 @@ class SgpProcessor:
             
             df = df.sort_values(by="Total_SGP", ascending=False).reset_index()
 
-            print("[*] Computing replacement level for pitchers...")
+            print("Computing replacement level for pitchers...")
             starter_rl = df[df["Starter"] == 1]["Total_SGP"].iloc[108]
             reliever_rl = df[df["Starter"] == 0]["Total_SGP"].iloc[36]
             
@@ -100,7 +100,7 @@ class SgpProcessor:
 
     def assign_util(self, df):
         """Assign UTIL position based on rostered thresholds"""
-        print("[*] Determining UTIL players...")
+        print("Determining UTIL players...")
         util_list = []
         util_count = 0
 
@@ -122,7 +122,7 @@ class SgpProcessor:
 
     def compute_replacement_level(self, df):
         """Compute RL per position, ensuring required number of rostered players"""
-        print("[*] Identifying rostered universe...")
+        print("Identifying rostered universe...")
         
         def get_rostered_universe(df):
             """Find the lowest-ranked players that fill required positions"""
@@ -170,9 +170,9 @@ class SgpProcessor:
 
         rostered_df = get_rostered_universe(df)
         rostered_df.to_excel("rostered.xlsx")
-        print(f"[✔] Rostered universe identified ({len(rostered_df)} players).")
+        print(f"Rostered universe identified ({len(rostered_df)} players).")
 
-        print("[*] Finding worst rostered player per position...")
+        print("Finding worst rostered player per position...")
         worst_rostered = {}
 
         for pos in ["1B", "3B", "2B", "SS", "C", "OF"]:
@@ -196,17 +196,8 @@ class SgpProcessor:
 
             worst_rostered[pos] = worst_player["Total_SGP"].values[0]
             print(f"[DEBUG] Worst rostered {pos}: {worst_player['Name'].values[0]} (SGP: {worst_rostered[pos]})")
-
-            '''        
-            worst_player = rostered_df[(rostered_df["ELIG"].str.contains(pos, na=False))].nsmallest(1, "Total_SGP")
-            if not worst_player.empty:
-                worst_rostered[pos] = worst_player["Total_SGP"].values[0]
-                print(f"[DEBUG] Worst rostered {pos}: {worst_player['Name'].values[0]} (SGP: {worst_rostered[pos]})")
-            else:
-                worst_rostered[pos] = float("inf")
-            '''
             
-        print("[*] Finding best non-rostered player per position...")
+        print("Finding best non-rostered player per position...")
         best_replacements = {}
         for pos in worst_rostered.keys():
             best_player = df[~df["PlayerId"].isin(rostered_df["PlayerId"]) & df["ELIG"].str.contains(pos, na=False)].nlargest(1, "Total_SGP")
@@ -216,7 +207,7 @@ class SgpProcessor:
             else:
                 best_replacements[pos] = float("-inf")
 
-        print("[*] Computing RL for each position...")
+        print("Computing RL for each position...")
         rl_values = {
             pos: (best_replacements[pos] + worst_rostered[pos]) / 2
             if worst_rostered[pos] != float("inf") and best_replacements[pos] != float("-inf")
@@ -234,11 +225,11 @@ class SgpProcessor:
         df["RL"] = df["ELIG"].apply(lambda elig: min(rl_values.get(pos, float("inf")) for pos in elig.split("/")))
         df["VAR"] = df["Total_SGP"] - df["RL"]
         
-        print("[✔] Replacement level calculation complete!")
+        print("Replacement level calculation complete!")
         return df
     
     def export_sgp(self,sb):
-        print("[*] Exporting SGP Results...")
+        print("Exporting SGP Results...")
         
         SAVE_FOLDER = os.path.join(os.getcwd(), "results")
         os.makedirs(SAVE_FOLDER,exist_ok=True)
@@ -273,4 +264,4 @@ class SgpProcessor:
 
         wb.save(file_name)
         
-        print(f"[✔] Exported SGP Results to {file_name}")
+        print(f"Exported SGP Results to {file_name}")
