@@ -58,7 +58,7 @@ class SgpPitchers(SgpBase):
             total_opps = self.team_opportunities[opps] + self.stats[opps]
             
             result[f'SGP_{cat}'] = ((team_val_wo_average_player+val)/(total_opps) - self.replacement_levels[cat])/self.cat_stds[cat]
-
+            
         return pd.DataFrame(result)
 
     def _process_sgp(self):

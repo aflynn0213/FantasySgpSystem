@@ -87,6 +87,7 @@ class SgpBase:
         
         # Calculate SGP for counting stats
         sgp = self.stats[categories].sub(factor*replacement,axis=1).div(factor*stds,axis=1)
+        
         sgp.columns = [f'SGP_{cat}' for cat in categories] 
         return sgp
 

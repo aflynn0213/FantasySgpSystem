@@ -6,7 +6,7 @@ import pandas as pd
 from utils.common_utils import upload_to_bucket, get_repo_root
 
 hitter_export_cols = ['PA', 'SGP_R', 'SGP_HR', 'SGP_RBI', 'SGP_SB', 'SGP_OBP', 'SGP_SLG', 'Total_SGP_wSB', 'Total_SGP']
-pitcher_export_cols = ['IP', 'SGP_SO', 'SGP_QS', 'SGP_SV_HLD', 'SGP_ERA', 'SGP_WHIP', 'SGP_K/BB', 'Total_SGP']
+pitcher_export_cols = ['IP', 'GS', 'SGP_SO', 'SGP_QS', 'SGP_SV_HLD', 'SGP_ERA', 'SGP_WHIP', 'SGP_K/BB', 'Total_SGP']
 index_cols = ['Name','PlayerId']
 
     
