@@ -87,7 +87,6 @@ class SgpBase:
         
         # Calculate SGP for counting stats
         sgp = self.stats[categories].sub(factor*replacement,axis=1).div(factor*stds,axis=1)
-        
         sgp.columns = [f'SGP_{cat}' for cat in categories] 
         return sgp
 
@@ -99,7 +98,7 @@ class SgpBase:
         result = { f'SGP_{cat}': (  (factor*self.team_value[f'{cat}_{opps}'] + self.stats[f'{cat}']*self.stats[f'{opps}'] ) 
                                      / (factor*self.team_opportunities[f'{opps}']+self.stats[f'{opps}']) - self.replacement_levels[f'{cat}']  ) 
                                     / self.cat_stds[f'{cat}'] for cat,opps in categories }
-
+        
         return pd.DataFrame(result)
     
     def _process_sgp(self):

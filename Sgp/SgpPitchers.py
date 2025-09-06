@@ -58,7 +58,7 @@ class SgpPitchers(SgpBase):
             total_opps = self.team_opportunities[opps] + self.stats[opps]
             
             result[f'SGP_{cat}'] = ((team_val_wo_average_player+val)/(total_opps) - self.replacement_levels[cat])/self.cat_stds[cat]
-            
+           
         return pd.DataFrame(result)
 
     def _process_sgp(self):
@@ -66,11 +66,11 @@ class SgpPitchers(SgpBase):
         counting_stats = ['SO', 'QS', 'SV_HLD']
         self.stats['SV_HLD'] = self.stats['SV'] + self.stats['HLD']
         self.sgp_df = self._cat_calc_sgp(counting_stats)
-            
+        
         print("Calculating SGP for rate stats (ERA, WHIP, K/BB)...")
         rate_stats = [('ERA','IP'), ('WHIP', 'IP'), ('K/BB', 'BB')]
-        self.sgp_df = pd.concat([self.sgp_df,self._rate_calc_sgp(rate_stats)])
- 
+        self.sgp_df = pd.concat([self.sgp_df,self._rate_calc_sgp(rate_stats)],axis=1)
+        
         print("***Pitchers SGP calculation complete.***")
         
     def _team_rate_values_processing(self,ip_adj):
