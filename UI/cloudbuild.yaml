@@ -6,8 +6,10 @@ substitutions:
   _SERVICE: sgp-viewer                 # Cloud Run service
   _IMAGE_NAME: sgp-viewer              # image name within the repo
 
+options:
+  logging: CLOUD_LOGGING_ONLY
+  
 steps:
-  # Build + tag with SHORT_SHA and date tag (v_YYMMDD), then push both
   - name: gcr.io/cloud-builders/docker
     dir: ui                             # run inside the ui/ folder
     entrypoint: bash
@@ -23,7 +25,6 @@ steps:
         docker push "$IMG:$DATE_TAG"
         echo "$DATE_TAG" > /workspace/DATE_TAG.txt  # pass date tag to next step
 
-  # Deploy (use the date tag to match your local workflow)
   - name: gcr.io/google.com/cloudsdktool/cloud-sdk
     entrypoint: bash
     args:
@@ -43,4 +44,4 @@ steps:
 
 images:
   - "${_LOCATION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_IMAGE_NAME}:$SHORT_SHA"
-  - "${_LOCATION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_IMAGE_NAME}:v_${BUILD_ID}"  # bookkeeping only
+  - "${_LOCATION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_IMAGE_NAME}:v_${BUILD_ID}" 
