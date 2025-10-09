@@ -1,11 +1,13 @@
-from typing import List, Union
+from typing import List
 import pandas as pd
 from openpyxl import load_workbook
-import string
+
 from google.cloud import storage
 
-from utils.common_utils import download_from_bucket
+from utils.common_utils import download_from_bucket, get_repo_root
 from utils.docker_running import is_running_in_docker
+
+import os
 
 NUM_TEAMS = 12
 NUM_BATS = 13
@@ -21,12 +23,12 @@ class SgpBase:
         :param weeks: Weeks into the season to determine SGP proportion (26 default for full season projections).
         """
         
-        print(f"[*] Initializing Sgp {player_type} for projections: {proj}")
+        print(f"Initializing Sgp {player_type} for projections: {proj}")
         self.proj,self.period = proj.split('_')
         
         # === Download from GCS if running in Docker ===
         if is_running_in_docker():
-            print("[*] Downloading data from GCS...")
+            print("Downloading data from GCS...")
             download_from_bucket("fantasysgpsystem-outputs", 
                                  f"projections/fangraphs_{player_type}_{self.proj}.xlsx", 
                                  f"projections/fangraphs_{player_type}_{self.proj}.xlsx")
@@ -42,13 +44,13 @@ class SgpBase:
                                      f"ros/fangraphs_{player_type}_{self.proj}_ros.xlsx", 
                                      f"ros/fangraphs_{player_type}_{self.proj}_ros.xlsx")    
     
-        print("[*] Loading projection data...")
+        print("Loading projection data...")
         if self.period == 'pre':
             self.weeks = 26
             self.proj_read = pd.read_excel(f'projections/fangraphs_{player_type}_{self.proj}.xlsx', sheet_name=0)
             self.stats = self.proj_read.drop_duplicates(subset=['Name', 'PlayerId'])
 
-            print("[*] Loading auction calculator data...")
+            print("Loading auction calculator data...")
             self.auc_calc = pd.read_excel(f"auction_calculator_exports/auc_calc_{player_type}_{self.proj}.xlsx", sheet_name=0)
 
         elif self.period == 'td':
@@ -56,7 +58,7 @@ class SgpBase:
             self.proj_read = pd.read_excel(f'projections/fangraphs_{player_type}_{self.proj}.xlsx', sheet_name=0)
             self.stats = pd.read_excel(f"stats/fangraphs_{player_type}_stats.xlsx",sheet_name=0)
 
-            print("[*] Loading auction calculator data...")
+            print("Loading auction calculator data...")
             self.auc_calc = pd.read_excel(f"auction_calculator_exports/auc_calc_{player_type}_{self.proj}.xlsx", sheet_name=0)
 
         elif self.period == 'ros':
@@ -64,7 +66,7 @@ class SgpBase:
             self.stats = pd.read_excel(f"ros/fangraphs_{player_type}_{self.proj}_ros.xlsx",sheet_name=0)
             self.proj_read = self.stats.copy()
 
-            print("[*] Loading auction calculator data...")
+            print("Loading auction calculator data...")
             self.auc_calc = pd.read_excel(f"auction_calculator_exports/auc_calc_{player_type}_{self.proj}_ros.xlsx", sheet_name=0)
 
         self.stats["PlayerId"] = self.stats["PlayerId"].astype(str) 
@@ -72,14 +74,15 @@ class SgpBase:
         self.auc_calc["PlayerId"] = self.auc_calc["PlayerId"].astype(str)
 
         # Load league-wide replacement levels & category standard deviations
-        self.wb = load_workbook("included/leaguehistory.xlsx", data_only=True)
+        self.wb = load_workbook(os.path.join(get_repo_root(), "included", "leaguehistory.xlsx"), data_only=True)
         self.sheet = self.wb["Sheet1"]
 
-        print(f"[✔] SgpBase initialized for {player_type}.")
+        print(f"[FINISHED] SgpBase initialized for {player_type}.")
     
     def _cat_calc_sgp(self,categories: List[str]):
         factor = self.weeks / 26
         replacement = pd.Series(self.replacement_levels).reindex(categories)
+        print(replacement)
         stds = pd.Series(self.cat_stds).reindex(categories)
         
         # Calculate SGP for counting stats
@@ -95,19 +98,7 @@ class SgpBase:
         result = { f'SGP_{cat}': (  (factor*self.team_value[f'{cat}_{opps}'] + self.stats[f'{cat}']*self.stats[f'{opps}'] ) 
                                      / (factor*self.team_opportunities[f'{opps}']+self.stats[f'{opps}']) - self.replacement_levels[f'{cat}']  ) 
                                     / self.cat_stds[f'{cat}'] for cat,opps in categories }
-        ''' if opportunities == 'AB':
-                team_cat = 'SLG_AB'
-                player_opps = self.stats[opportunities]
-            elif opportunities == 'PA':
-                team_cat = 'OBP_PA'
-                player_opps = self.stats[opportunities] - self.stats['SH']
-
-            player_val = self.stats[cat]*player_opps
-            team_val_wo_average_player = self.team_value[team_cat]
-            total_opps = (self.weeks/26)*self.team_opportunities[opportunities] + player_opps
-        '''
-        #return (((self.weeks/26)*team_val_wo_average_player+player_val)/(total_opps) - self.replacement_levels[cat])/self.cat_stds[cat]
-
+        
         return pd.DataFrame(result)
     
     def _process_sgp(self):

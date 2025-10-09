@@ -9,9 +9,9 @@ NUM_STARTERS = 9
 NUM_RELIEVERS = 3
 
 class SgpPitchers(SgpBase):
-    def __init__(self, proj, ip_adj=None):
+    def __init__(self, proj, ip_adj=None, weeks=26) -> None:
         self.ip_adj = ip_adj
-        super().__init__(proj, "pitching")
+        super().__init__(proj, "pitching",weeks)
         
         if (ip_adj):
             print("Adjusting pitcher playing time...")
@@ -58,19 +58,19 @@ class SgpPitchers(SgpBase):
             total_opps = self.team_opportunities[opps] + self.stats[opps]
             
             result[f'SGP_{cat}'] = ((team_val_wo_average_player+val)/(total_opps) - self.replacement_levels[cat])/self.cat_stds[cat]
-
+           
         return pd.DataFrame(result)
 
     def _process_sgp(self):
         print("Calculating SGP for counting stats (SO, QS, SV_HLD)...")
         counting_stats = ['SO', 'QS', 'SV_HLD']
         self.stats['SV_HLD'] = self.stats['SV'] + self.stats['HLD']
-        self.sgp_df = self.cat_calc_sgp(counting_stats)
-            
+        self.sgp_df = self._cat_calc_sgp(counting_stats)
+        
         print("Calculating SGP for rate stats (ERA, WHIP, K/BB)...")
         rate_stats = [('ERA','IP'), ('WHIP', 'IP'), ('K/BB', 'BB')]
-        self.sgp_df = pd.concat([self.sgp_df,self.rate_calc_sgp(rate_stats)])
- 
+        self.sgp_df = pd.concat([self.sgp_df,self._rate_calc_sgp(rate_stats)],axis=1)
+        
         print("***Pitchers SGP calculation complete.***")
         
     def _team_rate_values_processing(self,ip_adj):

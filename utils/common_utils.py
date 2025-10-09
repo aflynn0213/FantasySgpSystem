@@ -8,6 +8,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException
 from utils.docker_running import is_running_in_docker
+import subprocess
 
 def download_from_bucket(bucket_name, blob_path, local_path):
     client = storage.Client()
@@ -39,7 +40,7 @@ def download_fangraphs_csv(DOWNLOAD_FOLDER, driver, url, save_path, retries=3):
     except TimeoutException as e:
         print(f"[ERROR] Could not find or click the 'Export Data' button: {e}")
         debug_docker_selenium(driver, label="login_error", bucket="fantasysgpsystem-outputs")
-        print("[*] Debugging information uploaded to GCS.")
+        print("Debugging information uploaded to GCS.")
         if retries > 0:
             print("Retrying download...")
             return download_fangraphs_csv(driver, url, save_path, retries=retries-1)
@@ -115,3 +116,9 @@ def upload_to_bucket(local_file_path, gcs_blob_name, bucket_name="fantasysgpsyst
         print(f"Uploaded to GCS: gs://{bucket_name}/{gcs_blob_name}")
     except Exception as e:
         print(f"Failed to upload {local_file_path} to GCS: {e}")
+
+def get_repo_root() -> str:
+    return subprocess.check_output(
+        ["git", "rev-parse", "--show-toplevel"],
+        text=True
+    ).strip()

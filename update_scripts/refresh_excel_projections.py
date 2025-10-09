@@ -57,33 +57,33 @@ os.makedirs(SAVE_FOLDER_AUC,exist_ok=True)
 def login_to_fangraphs(driver):
         
     """Logs into FanGraphs."""
-    print("[*] Navigating to FanGraphs login page...")
+    print("Navigating to FanGraphs login page...")
     driver.get(LOGIN_URL)
     time.sleep(3)
 
     # username
-    print("[*] Entering username...")
+    print("Entering username...")
     username_field = driver.find_element(By.ID, "user_login")
     username_field.send_keys(FANGRAPHS_USERNAME)
 
     # password
-    print("[*] Entering password...")
+    print("Entering password...")
     password_field = driver.find_element(By.ID, "user_pass")
     password_field.send_keys(FANGRAPHS_PASSWORD)
     password_field.send_keys(Keys.RETURN)  # Press Enter to log in
 
     time.sleep(5)  # Wait for login to process
-    print("[✔] Successfully logged in!")
+    print("Successfully logged in!")
 
 def download_fangraphs_csv(driver, url, save_path):
     """Navigates to FanGraphs projections page, clicks 'Export Data', and downloads CSV."""
-    print(f"[*] Navigating to: {url}")
+    print(f"Navigating to: {url}")
     driver.get(url)
     time.sleep(5)
 
     try:
         # Find and click the "Export Data" button
-        print("[*] Searching for 'Export Data' button...")
+        print("Searching for 'Export Data' button...")
         export_button = driver.find_element(By.LINK_TEXT, "Export Data")
         
         # Scroll to the button (optional)
@@ -91,7 +91,7 @@ def download_fangraphs_csv(driver, url, save_path):
         time.sleep(1)
 
         # Click using JavaScript to bypass UI blocking issues
-        print("[✔] Clicking 'Export Data' button via JavaScript...")
+        print("Clicking 'Export Data' button via JavaScript...")
         driver.execute_script("arguments[0].click();", export_button)
     except Exception as e:
         print(f"[ERROR] Could not find or click the 'Export Data' button: {e}")
@@ -114,27 +114,27 @@ def download_fangraphs_csv(driver, url, save_path):
         return
 
     csv_path = os.path.join(DOWNLOAD_FOLDER, csv_file)
-    print(f"[✔] Downloaded file: {csv_path}")
+    print(f"Downloaded file: {csv_path}")
 
     # Convert CSV to Excel
     df = pd.read_csv(csv_path)
     df.to_excel(save_path, index=False)
     os.remove(csv_path)
-    print(f"[✔] File saved: {save_path}")
+    print(f"File saved: {save_path}")
 
 def wait_for_selenium(timeout=1500):
     """Wait for Selenium Grid to be available."""
-    print("[*] Waiting for Selenium Grid to be ready...")
+    print("Waiting for Selenium Grid to be ready...")
     for i in range(timeout):
         try:
             response = requests.get(SELENIUM_GRID_URL)
             if response.status_code == 200 and response.json().get("value", {}).get("ready", False):
-                print("[✔] Selenium Grid is ready!")
+                print("Selenium Grid is ready!")
                 return
         except requests.exceptions.RequestException:
             pass  # Keep trying
         
-        print(f"[*] Selenium not ready, retrying... ({i+1}/{timeout})")
+        print(f"Selenium not ready, retrying... ({i+1}/{timeout})")
         time.sleep(1)  # Wait 1 second before retrying
 
     print("[ERROR] Selenium did not start in time. Exiting...")
@@ -146,9 +146,9 @@ def upload_to_bucket(local_file_path, gcs_blob_name, bucket_name="fantasysgpsyst
         bucket = client.bucket(bucket_name)
         blob = bucket.blob(gcs_blob_name)
         blob.upload_from_filename(local_file_path)
-        print(f"[⬆] Uploaded to GCS: gs://{bucket_name}/{gcs_blob_name}")
+        print(f"Uploaded to GCS: gs://{bucket_name}/{gcs_blob_name}")
     except Exception as e:
-        print(f"[!] Failed to upload {local_file_path} to GCS: {e}")
+        print(f"Failed to upload {local_file_path} to GCS: {e}")
         
             
 def main():
@@ -165,7 +165,7 @@ def main():
         options.add_argument("--disable-dev-shm-usage")  
         options.add_argument("--disable-gpu")  # Disable GPU acceleration
 
-        print("[*] Running inside Docker, using pre-installed ChromeDriver...")
+        print("Running inside Docker, using pre-installed ChromeDriver...")
         driver = webdriver.Remote(command_executor=SELENIUM_GRID_URL, options=options)
         
     else:
@@ -179,13 +179,13 @@ def main():
 
     # Download each dataset
     for filename, url in PROJECTIONS_URLS.items():
-        print(f"\n[⚡] Processing: {filename}")
+        print(f"\n Processing: {filename}")
         save_path = os.path.join(SAVE_FOLDER, f"{filename}.xlsx") if "fangraphs" in filename else os.path.join(SAVE_FOLDER_AUC, f"{filename}.xlsx")
         gcs_blob_name = f"projections/{filename}.xlsx" if "fangraphs" in filename else f"auction_calculator_exports/{filename}.xlsx"
         download_fangraphs_csv(driver, url, save_path)
         upload_to_bucket(save_path, gcs_blob_name)
         
-    print("\n[✔] Done!")
+    print("\n Done!")
     driver.quit()
 
 if __name__ == "__main__":
