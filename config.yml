@@ -1,0 +1,28 @@
+# config.yml
+defaults:
+  weeks_in_season: 26
+  num_teams: 12
+  num_bats: 13
+  num_starters: 9
+  num_relievers: 3
+
+league_params:
+  workbook_path: "included/leaguehistory.xlsx"
+  parameters_sheet: "Parameters"
+
+categories:
+  hitters:
+    counting: ["R", "HR", "RBI", "SB"]
+    rate:
+      - [ "OBP", "PA_SH" ]
+      - [ "SLG", "AB" ]
+
+  pitchers:
+    counting: ["W", "SV", "K"]
+    rate:
+      - [ "ERA", "IP" ]
+      - [ "WHIP", "IP" ]
+      - [ "K/BB", "BB" ]
+
+export:
+  output_dir: "outputs"

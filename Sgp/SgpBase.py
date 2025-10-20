@@ -1,6 +1,6 @@
-from typing import List
+from abc import ABC
+from typing import List, Dict, Optional, Any
 import pandas as pd
-from openpyxl import load_workbook
 
 from google.cloud import storage
 
@@ -9,19 +9,41 @@ from utils.docker_running import is_running_in_docker
 
 import os
 
+from loaders import IProjectionLoader, ILeagueDataLoader
+from params.SgpParams import SgpParams
+from calc import ISgpCalculator
+
 NUM_TEAMS = 12
 NUM_BATS = 13
 NUM_STARTERS = 9
 NUM_RELIEVERS = 3
 
-class SgpBase:
-    def __init__(self, proj, player_type, weeks=26):
-        """
-        Base class for SGP processing.
-        :param proj: Projection system (e.g., "atc", "zips").
-        :param player_type: "hitting" or "pitching" (also determines file names).
-        :param weeks: Weeks into the season to determine SGP proportion (26 default for full season projections).
-        """
+class SgpBase(ABC):
+    def __init__(self,
+                 data: IProjectionLoader = None,
+                 workbook_loader: ILeagueDataLoader = None,
+                 league_params: SgpParams = None,
+                 sgp_calculator: ISgpCalculator = None):
+
+        self.proj_data = data
+        self.player_type = player_type
+        self.weeks = weeks
+        self._projection_loader = projection_loader
+        self._workbook_loader = workbook_loader
+        self._league_params = league_params
+        self._sgp_calculator = sgp_calculator
+
+        self.proj_read: pd.DataFrame = pd.DataFrame()
+        self.stats: pd.DataFrame = pd.DataFrame()
+        self.auc_calc: pd.DataFrame = pd.DataFrame()
+        self.replacement_levels: Dict[str,float] = {}
+        self.cat_stds: Dict[str,float] = {}
+        self.team_value: Dict[str,float] = {}
+        self.team_opportunities: Dict[str,float] = {}
+        self.sgp_df: pd.DataFrame = pd.DataFrame()
+
+        self._load_data()
+        self._load_league_params()
         
         print(f"Initializing Sgp {player_type} for projections: {proj}")
         self.proj,self.period = proj.split('_')
@@ -78,28 +100,6 @@ class SgpBase:
         self.sheet = self.wb["Sheet1"]
 
         print(f"[FINISHED] SgpBase initialized for {player_type}.")
-    
-    def _cat_calc_sgp(self,categories: List[str]):
-        factor = self.weeks / 26
-        replacement = pd.Series(self.replacement_levels).reindex(categories)
-        print(replacement)
-        stds = pd.Series(self.cat_stds).reindex(categories)
-        
-        # Calculate SGP for counting stats
-        sgp = self.stats[categories].sub(factor*replacement,axis=1).div(factor*stds,axis=1)
-        sgp.columns = [f'SGP_{cat}' for cat in categories] 
-        return sgp
-
-    def _rate_calc_sgp(self,categories: List[tuple]):
-        factor = self.weeks / 26
-        
-        result = {}
-
-        result = { f'SGP_{cat}': (  (factor*self.team_value[f'{cat}_{opps}'] + self.stats[f'{cat}']*self.stats[f'{opps}'] ) 
-                                     / (factor*self.team_opportunities[f'{opps}']+self.stats[f'{opps}']) - self.replacement_levels[f'{cat}']  ) 
-                                    / self.cat_stds[f'{cat}'] for cat,opps in categories }
-        
-        return pd.DataFrame(result)
     
     def _process_sgp(self):
         """Processes SGP for counting and rate stats (to be overridden in subclasses)."""
