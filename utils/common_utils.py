@@ -1,3 +1,5 @@
+from pathlib import Path
+from typing import Any
 from google.cloud import storage
 import os
 import time
@@ -9,6 +11,7 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException
 from utils.docker_running import is_running_in_docker
 import subprocess
+import yaml
 
 def download_from_bucket(bucket_name, blob_path, local_path):
     client = storage.Client()
@@ -43,7 +46,7 @@ def download_fangraphs_csv(DOWNLOAD_FOLDER, driver, url, save_path, retries=3):
         print("Debugging information uploaded to GCS.")
         if retries > 0:
             print("Retrying download...")
-            return download_fangraphs_csv(driver, url, save_path, retries=retries-1)
+            return download_fangraphs_csv(DOWNLOAD_FOLDER, driver, url, save_path, retries=retries-1)
         else:
             print("[!] Max retries reached. Skipping this file.")
             return
@@ -122,3 +125,64 @@ def get_repo_root() -> str:
         ["git", "rev-parse", "--show-toplevel"],
         text=True
     ).strip()
+
+def load_config(path: str = "config.yml"):
+    p = Path(path)
+    if not p.exists():
+        raise FileNotFoundError(f"Config file not found: {path}")
+    return yaml.safe_load(p.read_text())
+
+def parse_hitter_config_categories(cfg: Any):
+    categories = []
+    opportunities = []
+    # cfg['categories']['hitters'] is expected to be a dict with keys 'counting' and 'rate'
+    temp = cfg.get("categories", {}).get("hitters", {})
+    rate_entries = temp.get("rate", [])
+    if not isinstance(rate_entries, list):
+        raise ValueError(f"'rate' for Hitters should be a list, got {type(rate_entries)}")
+
+    for entry in rate_entries:
+        rate_metric = entry[0]
+        opp_metric = entry[1]
+
+        if not isinstance(rate_metric, str) or not isinstance(opp_metric, str):
+            raise ValueError(f"Rate and opportunity metrics must be strings, got: {entry}")
+
+        categories.append(rate_metric)
+        opportunities.append(opp_metric)
+
+    if len(categories) != len(opportunities):
+        raise ValueError(f"Length mismatch: {len(categories)} rate metrics vs {len(opportunities)} opportunities")
+
+    cat_opps = list(zip(categories,opportunities))
+    return categories, cat_opps
+
+def parse_pitcher_config_categories(cfg: Any):
+    categories = []
+    opportunities = []
+    # cfg['categories']['pitchers'] is expected to be a dict with keys 'counting' and 'rate'
+    temp = cfg.get("categories", {}).get("pitchers", {})
+    rate_entries = temp.get("rate", [])
+    if not isinstance(rate_entries, list):
+        raise ValueError(f"'rate' for Pitchers should be a list, got {type(rate_entries)}")
+
+    for entry in rate_entries:
+        rate_metric = entry[0]
+        opp_metric = entry[1]
+
+        if not isinstance(rate_metric, str) or not isinstance(opp_metric, str):
+            raise ValueError(f"Rate and opportunity metrics must be strings, got: {entry}")
+
+        categories.append(rate_metric)
+        opportunities.append(opp_metric)
+
+    if len(categories) != len(opportunities):
+        raise ValueError(f"Length mismatch: {len(categories)} rate metrics vs {len(opportunities)} opportunities")
+
+    cat_opps = list(zip(categories,opportunities))
+    return categories, cat_opps
+
+    
+
+    
+    
