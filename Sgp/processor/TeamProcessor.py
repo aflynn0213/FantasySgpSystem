@@ -15,14 +15,16 @@ from utils.common_utils import (get_repo_root,
 class TeamProcessor():
     def __init__(self, data, params):
         self.__data = data
-        self.__params = params.copy()
+        self.__params = params
+        self.team_opportunities:Dict[str,float] = {}
+        self.team_value:Dict[str,float] = {}
         self.__buildProcessor()
 
     def __buildProcessor(self)->Dict:
         config = load_config(os.path.join(get_repo_root(), "config.yml"))
-        if(self.__data["player_type"]=="hitter"):
+        if(self.__data["player_type"]=="hitting"):
             self.__categories, self.__rate_opps = parse_hitter_config_categories(config) 
-        elif(self.__data["player_type"]=="hitter"):
+        elif(self.__data["player_type"]=="pitching"):
             self.__categories, self.__rate_opps = parse_pitcher_config_categories(config)
         else:
             raise DataError("Projection Data Loader contains invalid Player Type")
@@ -71,7 +73,7 @@ class TeamProcessor():
         temp_auc_calc['PA_SH'] = temp_auc_calc['PA'] - temp_auc_calc['SH']
 
         for cat,val in self.__rate_opps:
-            avg_opps = self.auc_calc[val].head(num_players).mean()                
+            avg_opps = temp_auc_calc[val].head(num_players).mean()                
             avg_team_opps_wo_replacement = avg_opps*(num_bats-1)
             avg_team_value_wo_replacement = avg_team_opps_wo_replacement*self.__params.replacement_levels[cat]
 

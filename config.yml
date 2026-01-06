@@ -18,7 +18,7 @@ categories:
       - [ "SLG", "AB" ]
 
   pitchers:
-    counting: ["W", "SV", "K"]
+    counting: ["QS", "SV_HLD", "SO"]
     rate:
       - [ "ERA", "IP" ]
       - [ "WHIP", "IP" ]

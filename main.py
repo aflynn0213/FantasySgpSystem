@@ -12,7 +12,7 @@ from Sgp.calc.SgpCalculator import SgpCalculator
 from Sgp.SgpHitters import SgpHitters
 from Sgp.SgpPitchers import SgpPitchers
 from utils.inseason_export_sgp import export_sgp
-from utils.common_utils import get_repo_root, load_config, parse_config_categories
+from utils.common_utils import get_repo_root, load_config
 
 cfg = load_config(os.path.join(get_repo_root(), "config.yml"))
 
@@ -36,39 +36,26 @@ def build_and_run(hitter_proj, pitcher_proj, sb_included, ip_adj, weeks, repo_ro
     team_processor_hit = TeamProcessor(hit_data, params)
     team_processor_pit = TeamProcessor(pit_data, params)
 
-    hit_calc = SgpCalculator(params=params,
-                             data=hit_data,
+    hit_calc = SgpCalculator(data=hit_data,
                              params=params,
                              teamProcessor=team_processor_hit,
                              role="hitting")
 
-    pit_calc = SgpCalculator(params=params,
-                             data=pit_data,
+    pit_calc = SgpCalculator(data=pit_data,
                              params=params,
                              teamProcessor=team_processor_pit,
                              role="pitching")
 
     # Sgp Objects
-    hitters = SgpHitters(proj=hitter_proj,
-                         weeks=weeks,
-                         proj_read=hit_data["proj_read"],
-                         stats=hit_data["stats"],
-                         auc_calc=hit_data["auc_calc"],
+    hitters = SgpHitters(data=hit_data,
                          params=params,
-                         team_rate_processor=hit_team_proc,
                          sgp_calculator=hit_calc,
-                         config=cfg)
+                         sb_included=sb_included)
 
-    pitchers = SgpPitchers(proj=pitcher_proj,
-                           weeks=weeks,
-                           proj_read=pit_data["proj_read"],
-                           stats=pit_data["stats"],
-                           auc_calc=pit_data["auc_calc"],
-                           replacement_levels=repl,
-                           cat_stds=stds,
-                           team_rate_processor=pit_team_proc,
+    pitchers = SgpPitchers(data=pit_data,
+                           params=params,
                            sgp_calculator=pit_calc,
-                           config=cfg)
+                           ip_adj=ip_adj)
 
     df_hit = hitters.sgp_df.copy()
     df_pit = pitchers.sgp_df.copy()

@@ -30,6 +30,9 @@ class SgpCalculator(ISgpCalculator):
         stds = pd.Series(self.cat_stds).reindex(categories)
         
         # Calculate SGP for counting stats
+        print(self.stats.columns)
+        if ("pitching" == self.role):
+            self.stats['SV_HLD'] = self.stats['SV'] + self.stats['HLD']
         sgp = self.stats[categories].sub(factor*replacement,axis=1).div(factor*stds,axis=1)
         sgp.columns = [f'SGP_{cat}' for cat in categories] 
         return sgp
@@ -37,9 +40,10 @@ class SgpCalculator(ISgpCalculator):
     def rate_calc_sgp(self,categories: List[tuple]):
         factor = self.weeks / 26
         
-        result = {}
-
+        result = {}        
+        
         if ("hitting" == self.role):
+            self.stats["PA_SH"] = self.stats["PA"] - self.stats["SH"]
             #factor is point in season normalizer
             result = { f'SGP_{cat}': (  (factor*self.team_value[(cat,opp)] + self.stats[cat]*self.stats[opp] ) 
                                      / (factor*self.team_opportunities[opp]+self.stats[opp]) - self.replacement_levels[cat]  ) 
@@ -54,7 +58,9 @@ class SgpCalculator(ISgpCalculator):
                     multiple = 9
                 elif(cat=='WHIP'):
                     val = self.stats['H']+self.stats['BB']
+                    multiple = 1
                 elif(cat=="K/BB"):
+                    multiple = 1
                     val = self.stats['SO']
                 else:
                     raise NotImplementedError("Category outside of the league's pitching categories used as input to rate_calc_sgp")
@@ -64,7 +70,7 @@ class SgpCalculator(ISgpCalculator):
                 # take half of the replacement teams expected output for the season)
                 #multiple is 9 exclusively for ERA => ER = ERA*IP/9
                 #team_val_wo_average_player = ER*9
-                team_val_wo_average_player = factor*multiple*self.team_value[f'{cat}_{opps}'] 
+                team_val_wo_average_player = factor*multiple*self.team_value.get((cat, opps), 0)
 
                 #self.team_opportunities => IP, IP, BB team totals minus average
                 #factor is point in season normalizer

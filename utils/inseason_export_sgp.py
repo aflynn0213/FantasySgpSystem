@@ -11,13 +11,10 @@ index_cols = ['Name','PlayerId']
 
     
 def export_sgp(df,sb,dir,player_type):
-    if 'td' == dir :
-        save_loc = "stats"
-    elif 'ros' == dir:
-        save_loc = "ros"
-    print(get_repo_root())
-    SAVE_FOLDER = os.path.join(get_repo_root(), save_loc)
 
+    SAVE_FOLDER = os.path.join(get_repo_root(), "results")
+    os.makedirs(SAVE_FOLDER, exist_ok=True)
+    
     export_cols = hitter_export_cols if player_type == "hitting" else pitcher_export_cols
     
     column_missing = [col for col in export_cols if col not in df.columns]
@@ -42,7 +39,7 @@ def export_sgp(df,sb,dir,player_type):
     with pd.ExcelWriter(full_path) as writer:
         df[export_cols].to_excel(writer, sheet_name=player_type, index=False)
     
-    gcs_blob_path = f"{save_loc}/{file_name}"
+    gcs_blob_path = f"results/{file_name}"
     upload_to_bucket(full_path, gcs_blob_path)
 
         

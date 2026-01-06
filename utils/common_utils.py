@@ -46,7 +46,7 @@ def download_fangraphs_csv(DOWNLOAD_FOLDER, driver, url, save_path, retries=3):
         print("Debugging information uploaded to GCS.")
         if retries > 0:
             print("Retrying download...")
-            return download_fangraphs_csv(driver, url, save_path, retries=retries-1)
+            return download_fangraphs_csv(DOWNLOAD_FOLDER, driver, url, save_path, retries=retries-1)
         else:
             print("[!] Max retries reached. Skipping this file.")
             return
@@ -135,7 +135,8 @@ def load_config(path: str = "config.yml"):
 def parse_hitter_config_categories(cfg: Any):
     categories = []
     opportunities = []
-    temp = cfg["categories"].get("hitters", {}).items()
+    # cfg['categories']['hitters'] is expected to be a dict with keys 'counting' and 'rate'
+    temp = cfg.get("categories", {}).get("hitters", {})
     rate_entries = temp.get("rate", [])
     if not isinstance(rate_entries, list):
         raise ValueError(f"'rate' for Hitters should be a list, got {type(rate_entries)}")
@@ -159,7 +160,8 @@ def parse_hitter_config_categories(cfg: Any):
 def parse_pitcher_config_categories(cfg: Any):
     categories = []
     opportunities = []
-    temp = cfg["categories"].get("pitchers", {}).items()
+    # cfg['categories']['pitchers'] is expected to be a dict with keys 'counting' and 'rate'
+    temp = cfg.get("categories", {}).get("pitchers", {})
     rate_entries = temp.get("rate", [])
     if not isinstance(rate_entries, list):
         raise ValueError(f"'rate' for Pitchers should be a list, got {type(rate_entries)}")

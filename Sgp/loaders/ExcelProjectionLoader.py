@@ -48,6 +48,14 @@ class ExcelProjectionLoader(IProjectionLoader):
             #Unique auc_calc since this one uses proj ({proj_base}_ros)
             #Use this for playing time consideration averages for the rest of the season expectations
             data["auc_calc"] = pd.read_excel(f"auction_calculator_exports/auc_calc_{player_type}_{proj}.xlsx", sheet_name=0)
+            
+        elif period == 'eoy':
+            data["weeks"] = 26
+            data["stats"] = pd.read_excel(f"stats/fangraphs_{player_type}_stats.xlsx",sheet_name=0)
+            data["proj_read"] = data["stats"].copy()
+
+            print("Loading auction calculator data...")
+            data["auc_calc"] = pd.read_excel(f"auction_calculator_exports/auc_calc_{player_type}_{period}.xlsx", sheet_name=0)
 
         for key in ['proj_read','stats','auc_calc']:
             if key in data and 'PlayerId' in data[key].columns:

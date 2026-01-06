@@ -1,26 +1,39 @@
-from typing import List
+from typing import List, Dict
 import pandas as pd
 import numpy as np
-import string
-from Sgp.SgpBase import SgpBase
+from Sgp.params.SgpParams import SgpParams
+from Sgp.calc.ISgpCalculator import ISgpCalculator
 
 NUM_TEAMS = 12
 NUM_BATS = 13
 
-class SgpHitters(SgpBase):
-    def __init__(self,proj,sb_included=False,weeks=26) -> None:
-        super().__init__(proj,"hitting",weeks)
+class SgpHitters:
+    def __init__(self,
+                 data: Dict[str, pd.DataFrame],
+                 params: SgpParams,
+                 sgp_calculator: ISgpCalculator,
+                 sb_included: bool = False) -> None:
+        """
+        Initialize SgpHitters with injected dependencies.
+        
+        Args:
+            data: Dictionary with 'proj_read', 'stats', 'auc_calc', 'weeks', 'period'
+            params: SgpParams with replacement_levels and cat_stds
+            sgp_calculator: ISgpCalculator for SGP computations
+            sb_included: Whether to include stolen bases
+        """
+        print("Initializing SgpHitters...")
+        
+        # Extract data from injected dictionary
+        self.stats = data["stats"].copy()
+        self.proj_read = data["proj_read"].copy()
+        self.auc_calc = data["auc_calc"].copy()
+        self.weeks = data["weeks"]
+        self.period = data.get("period", "pre")
         
         self.sb_included = sb_included
-        
-        print("Loading replacement levels and category standard deviations...")
-        self.replacement_levels = self._load_replacement_levels()
-        self.cat_stds = self._load_category_stds()
-        
-        self.team_opportunities = {}
-        self.team_value = {}
- 
-        self._team_rate_values_processing()
+        self._sgp_calculator = sgp_calculator
+        self._params = params
         
         print("Processing hitters SGP...")
         self.stats["PA_SH"] = self.stats['PA'] - self.stats['SH']
@@ -33,39 +46,13 @@ class SgpHitters(SgpBase):
         print(f"***SgpHitters initialized***")
 
     def _process_sgp(self):
+        """Delegate SGP calculations to the injected calculator."""
         print("Calculating SGP for counting stats (R, HR, RBI, SB)...")
         counting_stats = ['R', 'HR', 'RBI', 'SB']
-        self.sgp_df = self._cat_calc_sgp(counting_stats)
+        self.sgp_df = self._sgp_calculator.cat_calc_sgp(counting_stats)
         
         print("Calculating SGP for rate stats (OBP, SLUG)...")
         rate_stats = [('OBP', 'PA_SH'), ('SLG', 'AB')]
-        self.sgp_df = pd.concat([self.sgp_df, self._rate_calc_sgp(rate_stats)],axis=1)
+        self.sgp_df = pd.concat([self.sgp_df, self._sgp_calculator.rate_calc_sgp(rate_stats)], axis=1)
         
         print("***Hitters SGP calculation complete.***")
-        
-    def _team_rate_values_processing(self,ip_adj=None):
-        self.auc_calc = self.auc_calc.merge(self.proj_read[['PlayerId','SH','AB']],
-                                            on='PlayerId',
-                                            how='left')
-        
-        self.auc_calc['PA_SH'] = self.auc_calc['PA'] - self.auc_calc['SH'] 
-                
-        for cat,val in [('OBP','PA_SH'), ('SLG','AB')]:
-            avg_opps = self.auc_calc[val].head(NUM_BATS*NUM_TEAMS).mean()                
-            avg_team_opps_wo_replacement = avg_opps*(NUM_BATS-1)
-            avg_team_value_wo_replacement = avg_team_opps_wo_replacement*self.replacement_levels[cat]
-
-            self.team_opportunities[val] = avg_team_opps_wo_replacement
-            self.team_value[f'{cat}_{val}'] = avg_team_value_wo_replacement
-            
-    def _load_replacement_levels(self):
-        return {
-            'R': self.sheet['Q26'].value, 'HR': self.sheet['R26'].value, 'RBI': self.sheet['S26'].value, 
-            'SB': self.sheet['T26'].value, 'OBP': self.sheet['U26'].value, 'SLG': self.sheet['V26'].value
-        }
-        
-    def _load_category_stds(self):
-        return {
-            'R': self.sheet['Q27'].value, 'HR': self.sheet['R27'].value, 'RBI': self.sheet['S27'].value, 'SB': self.sheet['T27'].value,
-            'OBP': self.sheet['U27'].value, 'SLG': self.sheet['V27'].value
-        }
