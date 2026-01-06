@@ -44,4 +44,4 @@ steps:
 
 images:
   - "${_LOCATION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_IMAGE_NAME}:$SHORT_SHA"
-  - "${_LOCATION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_IMAGE_NAME}:v_${BUILD_ID}" 
+  - "${_LOCATION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_IMAGE_NAME}:v_$BUILD_ID"
