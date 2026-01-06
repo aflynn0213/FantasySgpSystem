@@ -10,6 +10,7 @@ options:
 
 steps:
   - name: gcr.io/cloud-builders/docker
+    dir: UI
     entrypoint: bash
     args:
       - -c
