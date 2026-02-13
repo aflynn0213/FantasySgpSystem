@@ -12,14 +12,14 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from webdriver_manager.chrome import ChromeDriverManager
-from dotenv import load_dotenv
+from dotenv import load_dotenv, find_dotenv
 
 from google.cloud import storage
 
 SELENIUM_GRID_URL = "http://selenium:4444/wd/hub"
 
 # Load environment variables from a .env file
-load_dotenv()
+load_dotenv(find_dotenv())
 
 FANGRAPHS_USERNAME = os.getenv("FANGRAPHS_USERNAME")
 FANGRAPHS_PASSWORD = os.getenv("FANGRAPHS_PASSWORD")
