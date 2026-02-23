@@ -662,6 +662,7 @@ min_position_counts = {
     "2B": 12,     # 12 second basemen  
     "3B": 12,     # 12 third basemen
     "SS": 12,     # 12 shortstops
+    "OF": 60      # 60 Outfielders
 }
 
 # Combined bucket requirements
@@ -694,9 +695,13 @@ flowchart TD
     Primary --> IsDH{Primary = DH?}
     IsDH -->|Yes| AssignUTIL[Automatically assign to UTIL]
     
-    IsDH -->|No| MapPos[Map primary to bucket:<br/>1B/3B → CI<br/>2B/SS → MI<br/>C → C<br/>OF → OF]
+    IsDH -->|No| CheckMinimum{Individual position<br/>count < 12?}
     
-    MapPos --> CheckBucket{Primary bucket<br/>has space?<br/>AND individual position >= 12?}
+    CheckMinimum -->|Yes| AssignDirect[Assign directly to<br/>individual position<br/>Increment position counter]
+    
+    CheckMinimum -->|No - Position has 12+| MapPos[Map primary to bucket:<br/>1B/3B → CI<br/>2B/SS → MI<br/>C → C<br/>OF → OF]
+    
+    MapPos --> CheckBucket{Primary bucket<br/>has space?}
     
     CheckBucket -->|Yes| AssignPrimary[Assign to primary bucket<br/>Increment both individual position<br/>and bucket counter]
     
@@ -708,7 +713,7 @@ flowchart TD
     
     OtherAvail -->|No - All positions full| AssignUTIL3[Assign to UTIL<br/>if UTIL has space]
     
-    AssignPrimary & AssignAlt & AssignUTIL & AssignUTIL3 --> Increment[Increment appropriate<br/>position counter]
+    AssignDirect & AssignPrimary & AssignAlt & AssignUTIL & AssignUTIL3 --> Increment[Increment appropriate<br/>position counter]
     
     Increment --> TotalCheck{Total rostered = 156?}
     TotalCheck -->|No| Loop
