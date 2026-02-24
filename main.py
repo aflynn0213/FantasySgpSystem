@@ -8,6 +8,7 @@ from Sgp.loaders.ExcelProjectionLoader import ExcelProjectionLoader
 from Sgp.loaders.ExcelLeagueHistLoader import ExcelLeagueHistLoader
 from Sgp.params.SgpParams import SgpParams
 from Sgp.processor.TeamProcessor import TeamProcessor
+from Sgp.processor.SgpProcessor import SgpProcessor
 from Sgp.calc.SgpCalculator import SgpCalculator
 from Sgp.SgpHitters import SgpHitters
 from Sgp.SgpPitchers import SgpPitchers
@@ -25,7 +26,7 @@ def build_and_run(hitter_proj, pitcher_proj, sb_included, ip_adj, weeks, repo_ro
     # Load projection data
     hit_data = proj_loader.load(hitter_proj, "hitting")
     pit_data = proj_loader.load(pitcher_proj, "pitching",ip_adj)
-
+    
     params = SgpParams()
 
     # Load league parameters (Parameters sheet -> mapping -> repl/std dicts)
@@ -57,27 +58,16 @@ def build_and_run(hitter_proj, pitcher_proj, sb_included, ip_adj, weeks, repo_ro
                            sgp_calculator=pit_calc,
                            ip_adj=ip_adj)
 
-    df_hit = hitters.sgp_df.copy()
-    df_pit = pitchers.sgp_df.copy()
+    processor = SgpProcessor(hitters, pitchers)
+    processor.export_sgp(sb_included)
 
-    # compute totals and export
-    cols_included = list(range(0,6))
-    if (not sb_included):
-        cols_included.remove(3)
-        df_hit['Total_SGP_wSB'] = df_hit.iloc[:,0:6].sum(axis=1)
-    else:
-        df_hit['Total_SGP_wSB'] = float("nan")
-    df_hit['Total_SGP'] = df_hit.iloc[:, cols_included].sum(axis=1)
-    df_hit = df_hit.sort_values(by="Total_SGP", ascending=False)
-
-    df_pit['Total_SGP'] = df_pit.iloc[:, 0:6].sum(axis=1)
-    df_pit = df_pit.sort_values(by="Total_SGP", ascending=False)
-
-    file_name_hit = export_sgp(df_hit, sb_included, hitter_proj.split('_')[1], "hitting")
-    file_name_pit = export_sgp(df_pit, False, pitcher_proj.split('_')[1], "pitching")
+    file_name_hit = export_sgp(processor.hitters_df, sb_included, hitter_proj.split('_')[1], "hitting")
+    file_name_pit = export_sgp(processor.pitchers_df, False, pitcher_proj.split('_')[1], "pitching")
+    file_name_combined = export_sgp(processor.combined_df, sb_included, processor.suffix, "combined")
 
     print(f"[FINISHED] Exported SGP Hitter Results to {file_name_hit}")
     print(f"[FINISHED] Exported SGP Pitcher Results to {file_name_pit}")
+    print(f"[FINISHED] Exported SGP Combined Results to {file_name_combined}")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="SGP Processing Script")
@@ -98,3 +88,5 @@ if __name__ == "__main__":
         weeks = cfg["defaults"].get("weeks_in_season", 26)
 
     build_and_run(args.hitter_proj, args.pitcher_proj, args.sb_included, args.ip_adj, weeks, repo_root)
+
+    
