@@ -30,6 +30,7 @@ class SgpHitters:
         self.auc_calc = data["auc_calc"].copy()
         self.weeks = data["weeks"]
         self.period = data.get("period", "pre")
+        self.proj = data.get("projection", "unknown")
         
         self.sb_included = sb_included
         self._sgp_calculator = sgp_calculator
