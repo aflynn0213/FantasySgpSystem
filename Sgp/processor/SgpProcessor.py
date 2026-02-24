@@ -14,7 +14,7 @@ class SgpProcessor:
         temp_pitchers = sgp_pitchers.sgp_df.copy()
         temp_auc_hit = sgp_hitters.auc_calc.copy()
         self.suffix = f"{sgp_hitters.proj}_{sgp_pitchers.proj}"
-
+        print(temp_pitchers)
         self.sufficient_pos_counts = {"CI": 36, "MI": 36, "C": 12, "OF": 60, 'UTIL': 12}
         self.position_mapping = {'C': 'C', 
                                  '1B': 'CI', 
@@ -79,10 +79,10 @@ class SgpProcessor:
             df['Starter'] = np.where(df['GS'] > 5, 1, 0)
             
             df = df.sort_values(by="Total_SGP", ascending=False).reset_index()
-
+            
             print("Computing replacement level for pitchers...")
-            starter_rl = df[df["Starter"] == 1]["Total_SGP"].iloc[108]
-            reliever_rl = df[df["Starter"] == 0]["Total_SGP"].iloc[36]
+            starter_rl = df[df["Starter"] == 1]["Total_SGP"].iloc[96]
+            reliever_rl = df[df["Starter"] == 0]["Total_SGP"].iloc[48]
             
             df["RL"] = df.apply(lambda row: starter_rl if row["Starter"] == 1 else reliever_rl, axis=1)
             df["VAR"] = df["Total_SGP"] - df["RL"]
