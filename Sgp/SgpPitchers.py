@@ -4,10 +4,6 @@ import numpy as np
 from Sgp.params.SgpParams import SgpParams
 from Sgp.calc.ISgpCalculator import ISgpCalculator
 
-NUM_TEAMS = 12
-NUM_STARTERS = 9
-NUM_RELIEVERS = 3
-
 class SgpPitchers:
     def __init__(self,
                  data: Dict[str, pd.DataFrame],
@@ -31,6 +27,7 @@ class SgpPitchers:
         self.auc_calc = data["auc_calc"].copy()
         self.weeks = data["weeks"]
         self.period = data.get("period", "pre")
+        self.proj = data.get("projection", "unknown")
         
         self.ip_adj = ip_adj
         self._sgp_calculator = sgp_calculator
