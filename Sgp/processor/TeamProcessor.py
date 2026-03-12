@@ -21,11 +21,11 @@ class TeamProcessor():
         self.__buildProcessor()
 
     def __buildProcessor(self)->Dict:
-        config = load_config(os.path.join(get_repo_root(), "config.yml"))
+        config = load_config()
         if(self.__data["player_type"]=="hitting"):
-            self.__categories, self.__rate_opps = parse_hitter_config_categories(config) 
+            _, self.__rate_opps = parse_hitter_config_categories() 
         elif(self.__data["player_type"]=="pitching"):
-            self.__categories, self.__rate_opps = parse_pitcher_config_categories(config)
+            _, self.__rate_opps = parse_pitcher_config_categories()
         else:
             raise DataError("Projection Data Loader contains invalid Player Type")
         
