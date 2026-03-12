@@ -16,12 +16,16 @@ class SgpCalculator(ISgpCalculator):
                  role: str):
 
         self.weeks = data["weeks"]
-        self.stats = data["stats"].copy()
+        self.__stats = data["stats"].copy()
         self.replacement_levels: Dict[str, float] = params.replacement_levels
         self.cat_stds: Dict[str, float] = params.cat_stds
         self.team_value: Dict[Tuple(str,str), float] = teamProcessor.team_value
         self.team_opportunities: Dict[str, float] = teamProcessor.team_opportunities
         self.role = role
+
+    def update_stats(self, stats: pd.DataFrame) -> None:
+        """Replace internal stats — use when playing time has been adjusted before SGP calculation."""
+        self.__stats = stats.copy()
 
     def cat_calc_sgp(self,categories: List[str]):
         factor = self.weeks / 26
@@ -30,10 +34,10 @@ class SgpCalculator(ISgpCalculator):
         stds = pd.Series(self.cat_stds).reindex(categories)
         
         # Calculate SGP for counting stats
-        print(self.stats.columns)
+        print(self.__stats.columns)
         if ("pitching" == self.role):
-            self.stats['SV_HLD'] = self.stats['SV'] + self.stats['HLD']
-        sgp = self.stats[categories].sub(factor*replacement,axis=1).div(factor*stds,axis=1)
+            self.__stats['SV_HLD'] = self.__stats['SV'] + self.__stats['HLD']
+        sgp = self.__stats[categories].sub(factor*replacement,axis=1).div(factor*stds,axis=1)
         sgp.columns = [f'SGP_{cat}' for cat in categories] 
         return sgp
 
@@ -43,10 +47,10 @@ class SgpCalculator(ISgpCalculator):
         result = {}        
         
         if ("hitting" == self.role):
-            self.stats["PA_SH"] = self.stats["PA"] - self.stats["SH"]
+            self.__stats["PA_SH"] = self.__stats["PA"] - self.__stats["SH"]
             #factor is point in season normalizer
-            result = { f'SGP_{cat}': (  (factor*self.team_value[(cat,opp)] + self.stats[cat]*self.stats[opp] ) 
-                                     / (factor*self.team_opportunities[opp]+self.stats[opp]) - self.replacement_levels[cat]  ) 
+            result = { f'SGP_{cat}': (  (factor*self.team_value[(cat,opp)] + self.__stats[cat]*self.__stats[opp] ) 
+                                     / (factor*self.team_opportunities[opp]+self.__stats[opp]) - self.replacement_levels[cat]  ) 
                                     / self.cat_stds[f'{cat}'] for cat,opp in categories }
         
         elif("pitching" == self.role):
@@ -54,14 +58,14 @@ class SgpCalculator(ISgpCalculator):
             multiple = 1
             for cat,opps in categories:
                 if(cat=='ERA'):
-                    val = 9*self.stats['ER']
+                    val = 9*self.__stats['ER']
                     multiple = 9
                 elif(cat=='WHIP'):
-                    val = self.stats['H']+self.stats['BB']
+                    val = self.__stats['H']+self.__stats['BB']
                     multiple = 1
                 elif(cat=="K/BB"):
                     multiple = 1
-                    val = self.stats['SO']
+                    val = self.__stats['SO']
                 else:
                     raise NotImplementedError("Category outside of the league's pitching categories used as input to rate_calc_sgp")
             
@@ -75,7 +79,7 @@ class SgpCalculator(ISgpCalculator):
                 #self.team_opportunities => IP, IP, BB team totals minus average
                 #factor is point in season normalizer
                 #total_opps adds in player in questions total to team average to get player influence on team
-                total_opps = factor*self.team_opportunities[opps] + self.stats[opps]
+                total_opps = factor*self.team_opportunities[opps] + self.__stats[opps]
                 
                 #ERA CALCULATION: factor*9*(REPLACEMENT TEAM - 1 REPLACEMENT PLAYER EXPECTED ERS) + 9*Pitcher's ERs /
                 # (factor*(REPLACEMENT TEAM - 1 REPLACEMENT PLAYER EXPECTED IPs)+Pitcher's IPs) - Replacement ERA
