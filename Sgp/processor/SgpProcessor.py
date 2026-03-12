@@ -5,6 +5,8 @@ import os
 from openpyxl import load_workbook
 from openpyxl.styles import Font
 
+from utils.common_utils import build_config_hitter_counts
+
 class SgpProcessor:
     def __init__(self, sgp_hitters, sgp_pitchers):
 
@@ -15,14 +17,8 @@ class SgpProcessor:
         temp_auc_hit = sgp_hitters.auc_calc.copy()
         self.suffix = f"{sgp_hitters.proj}_{sgp_pitchers.proj}"
         print(temp_pitchers)
-        self.sufficient_pos_counts = {"CI": 36, "MI": 36, "C": 12, "OF": 60, 'UTIL': 12}
-        self.position_mapping = {'C': 'C', 
-                                 '1B': 'CI', 
-                                 '2B': 'MI', 
-                                 '3B': 'CI', 
-                                 'SS': 'MI', 
-                                 'OF': 'OF', 
-                                 'DH': 'UTIL'}
+        self.sufficient_pos_counts,self.position_mapping = build_config_hitter_counts()
+        
          
         print("Preparing hitter data...")
         self.hitters_df = self.prepare_data(temp_hitters, 'Hitter', sgp_hitters.sb_included, temp_auc_hit)

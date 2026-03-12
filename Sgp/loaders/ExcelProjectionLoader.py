@@ -57,6 +57,14 @@ class ExcelProjectionLoader(IProjectionLoader):
             print("Loading auction calculator data...")
             data["auc_calc"] = pd.read_excel(f"auction_calculator_exports/auc_calc_{player_type}_{period}.xlsx", sheet_name=0)
 
+        else:
+            valid_periods = ['pre', 'td', 'ros', 'eoy']
+            raise KeyError(
+                f"Unrecognized period '{period}' parsed from projection '{proj}'. "
+                f"Expected format is '{{proj_base}}_{{period}}' where period is one of {valid_periods}. "
+                f"e.g. 'atc_pre', 'oopsy_pre', 'atc_td'"
+            )
+
         for key in ['proj_read','stats','auc_calc']:
             if key in data and 'PlayerId' in data[key].columns:
                 data[key]['PlayerId'] = data[key]['PlayerId'].astype(str)

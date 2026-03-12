@@ -1,10 +1,25 @@
 # config.yml
+
+# Set to false on machines without GCS credentials to skip all uploads/downloads.
+use_gcs: false
+
 defaults:
   weeks_in_season: 26
   num_teams: 12
   num_bats: 13
-  num_starters: 9
-  num_relievers: 3
+  num_starters: 8
+  num_relievers: 4
+
+hitter_position_counts:
+  C:  1
+  1B: 1
+  2B: 1
+  3B: 1
+  SS: 1
+  MI: 1
+  CI: 1
+  OF: 5
+  UTIL: 1
 
 league_params:
   workbook_path: "included/leaguehistory.xlsx"
