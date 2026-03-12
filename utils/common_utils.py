@@ -1,6 +1,5 @@
 from pathlib import Path
 from typing import Any
-from google.cloud import storage
 import os
 import time
 import pandas as pd 
@@ -13,7 +12,16 @@ from utils.docker_running import is_running_in_docker
 import subprocess
 import yaml
 
+def is_gcs_enabled() -> bool:
+    """Return True only when use_gcs is explicitly set to true in config.yml."""
+    return bool(load_config().get("use_gcs", False))
+
+
 def download_from_bucket(bucket_name, blob_path, local_path):
+    if not is_gcs_enabled():
+        print(f"[GCS disabled] Skipping download of {blob_path}")
+        return
+    from google.cloud import storage  # lazy import — only needed when GCS is on
     client = storage.Client()
     bucket = client.bucket(bucket_name)
     blob = bucket.blob(blob_path)
@@ -101,7 +109,11 @@ def debug_docker_selenium(driver, label="debug", bucket="fantasysgpsystem-output
         print(f"Failed to save/upload HTML: {e}")
 
 def upload_debug_file(local_path, gcs_path, bucket_name="your-debug-bucket-name"):
+    if not is_gcs_enabled():
+        print(f"[GCS disabled] Skipping debug upload of {local_path}")
+        return
     try:
+        from google.cloud import storage  # lazy import
         client = storage.Client()
         bucket = client.bucket(bucket_name)
         blob = bucket.blob(gcs_path)
@@ -109,9 +121,14 @@ def upload_debug_file(local_path, gcs_path, bucket_name="your-debug-bucket-name"
         print(f"Uploaded {local_path} to gs://{bucket_name}/{gcs_path}")
     except Exception as e:
         print(f"Failed to upload to GCS: {e}")
-        
+
+
 def upload_to_bucket(local_file_path, gcs_blob_name, bucket_name="fantasysgpsystem-outputs"):
+    if not is_gcs_enabled():
+        print(f"[GCS disabled] Skipping upload of {local_file_path}")
+        return
     try:
+        from google.cloud import storage  # lazy import
         client = storage.Client()
         bucket = client.bucket(bucket_name)
         blob = bucket.blob(gcs_blob_name)
@@ -126,61 +143,82 @@ def get_repo_root() -> str:
         text=True
     ).strip()
 
-def load_config(path: str = "config.yml"):
+_config_cache = None
+
+def load_config(path: str = None):
+    global _config_cache
+    if _config_cache is not None:
+        return _config_cache
+    if path is None:
+        path = os.path.join(get_repo_root(), "config.yml")
     p = Path(path)
     if not p.exists():
         raise FileNotFoundError(f"Config file not found: {path}")
-    return yaml.safe_load(p.read_text())
+    _config_cache = yaml.safe_load(p.read_text())
+    return _config_cache
 
-def parse_hitter_config_categories(cfg: Any):
-    categories = []
-    opportunities = []
-    # cfg['categories']['hitters'] is expected to be a dict with keys 'counting' and 'rate'
+def parse_hitter_config_categories():
+    cfg = load_config()
     temp = cfg.get("categories", {}).get("hitters", {})
+    counting = temp.get("counting", [])
     rate_entries = temp.get("rate", [])
     if not isinstance(rate_entries, list):
         raise ValueError(f"'rate' for Hitters should be a list, got {type(rate_entries)}")
 
+    cat_opps = []
     for entry in rate_entries:
-        rate_metric = entry[0]
-        opp_metric = entry[1]
-
+        rate_metric, opp_metric = entry[0], entry[1]
         if not isinstance(rate_metric, str) or not isinstance(opp_metric, str):
             raise ValueError(f"Rate and opportunity metrics must be strings, got: {entry}")
+        cat_opps.append((rate_metric, opp_metric))
 
-        categories.append(rate_metric)
-        opportunities.append(opp_metric)
+    return counting, cat_opps
 
-    if len(categories) != len(opportunities):
-        raise ValueError(f"Length mismatch: {len(categories)} rate metrics vs {len(opportunities)} opportunities")
-
-    cat_opps = list(zip(categories,opportunities))
-    return categories, cat_opps
-
-def parse_pitcher_config_categories(cfg: Any):
-    categories = []
-    opportunities = []
-    # cfg['categories']['pitchers'] is expected to be a dict with keys 'counting' and 'rate'
+def parse_pitcher_config_categories():
+    cfg = load_config()
     temp = cfg.get("categories", {}).get("pitchers", {})
+    counting = temp.get("counting", [])
     rate_entries = temp.get("rate", [])
     if not isinstance(rate_entries, list):
         raise ValueError(f"'rate' for Pitchers should be a list, got {type(rate_entries)}")
 
+    cat_opps = []
     for entry in rate_entries:
-        rate_metric = entry[0]
-        opp_metric = entry[1]
-
+        rate_metric, opp_metric = entry[0], entry[1]
         if not isinstance(rate_metric, str) or not isinstance(opp_metric, str):
             raise ValueError(f"Rate and opportunity metrics must be strings, got: {entry}")
+        cat_opps.append((rate_metric, opp_metric))
 
-        categories.append(rate_metric)
-        opportunities.append(opp_metric)
+    return counting, cat_opps
 
-    if len(categories) != len(opportunities):
-        raise ValueError(f"Length mismatch: {len(categories)} rate metrics vs {len(opportunities)} opportunities")
+def build_config_hitter_counts():
+    cfg = load_config()
+    roster_positions = {}
+    league_positions = {}
 
-    cat_opps = list(zip(categories,opportunities))
-    return categories, cat_opps
+    position_mapping = {'C': 'C', 
+                        '1B': 'CI', 
+                        '2B': 'MI', 
+                        '3B': 'CI', 
+                        'SS': 'MI', 
+                        'OF': 'OF', 
+                        'DH': 'UTIL'}
+    
+    position_mapping_temp = position_mapping.copy()
+    position_mapping_temp.update({'CI': 'CI', 'MI': 'MI', 'UTIL': 'UTIL'})
+    for pos, count in cfg.get("hitter_position_counts", {}).items():
+        if not isinstance(pos, str) or not isinstance(count, int):
+            raise ValueError(f"Invalid roster position entry: {pos}: {count}")
+        roster_positions[pos] = count
+    for pos,group in position_mapping_temp.items():
+        league_positions[group] = roster_positions.get(pos, 0) + league_positions.get(group, 0)
+    league_positions = {k: v*12 for k, v in league_positions.items()}
+    
+    print(f"League position counts: {league_positions}")
+    print(f"Total League Rostered Hitters: {sum(league_positions.values())}")
+    print(f"Position mapping: {position_mapping}")
+    
+    return league_positions,position_mapping
 
     
 
