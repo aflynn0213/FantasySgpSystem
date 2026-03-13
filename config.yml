@@ -39,5 +39,46 @@ categories:
       - [ "WHIP", "IP" ]
       - [ "K/BB", "BB" ]
 
+# Points league scoring weights.  Set a stat to 0 to exclude it from totals.
+points:
+  hitters:
+    # Plate appearance / at-bat (rarely scored, kept for reference)
+    PA:   0
+    AB:   0
+    # Hit types — a single counts as 1B only (H=0 avoids double-counting)
+    H:    0
+    1B:   1      # single
+    2B:   2      # double
+    3B:   3      # triple
+    HR:   4      # home run
+    # Run-production
+    R:    1      # run scored
+    RBI:  1      # run batted in
+    # Walks / on-base
+    BB:   1      # walk
+    HBP:  1      # hit by pitch
+    # Baserunning
+    SB:   2      # stolen base
+    CS:  -1      # caught stealing
+    # Strikeout penalty
+    SO:  -0.5
+    # Sacrifice — not typically scored
+    SF:   0
+    SH:   0
+
+  pitchers:
+    IP:   3      # innings pitched  (3 pts/IP is the standard ESPN default)
+    W:    5      # win
+    L:   -5      # loss
+    SV:   5      # save
+    HLD:  2      # hold
+    QS:   3      # quality start  (6+ IP, ≤3 ER)
+    SO:   1      # strikeout
+    ER:  -1      # earned run allowed
+    R:    0      # unearned runs (set to -1 if your league uses R instead of ER)
+    H:    0      # hit allowed (some leagues use -0.25)
+    HR:  -1      # home run allowed
+    BB:  -0.5    # walk issued
+      
 export:
   output_dir: "outputs"
