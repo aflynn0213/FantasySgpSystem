@@ -52,5 +52,58 @@ def export_sgp(df,sb,dir,player_type):
 
         
     return file_name
-        
-        
+
+
+def export_points(df, sb, dir, player_type):
+    """Export a points-league result DataFrame to Excel + GCS (if enabled).
+
+    The PTS_* columns are discovered dynamically so this function stays
+    valid regardless of which stats are active in config.yml.
+
+    Args:
+        df:          Points result DataFrame (from PointsProcessor).
+        sb:          Whether SB is included in Total_PTS.
+        dir:         Projection-system label used in the filename (e.g. ``"steamer"``).
+        player_type: One of ``"hitting"``, ``"pitching"``, or ``"combined"``.
+
+    Returns:
+        The output filename (without directory prefix).
+    """
+    SAVE_FOLDER = os.path.join(get_repo_root(), "results")
+    os.makedirs(SAVE_FOLDER, exist_ok=True)
+
+    # Discover PTS_* columns dynamically
+    pts_cols = sorted([c for c in df.columns if c.startswith("PTS_")])
+
+    if player_type == "hitting":
+        base_cols = ["PA"] + pts_cols + ["Total_PTS_wSB", "Total_PTS"]
+    elif player_type == "pitching":
+        base_cols = ["IP"] + pts_cols + ["Total_PTS"]
+    elif player_type == "combined":
+        base_cols = ["Total_PTS", "RL", "VAR"]
+    else:
+        base_cols = pts_cols + ["Total_PTS"]
+
+    # Only include columns that are actually present (handles in-season shortcut)
+    base_cols = [c for c in base_cols if c in df.columns]
+
+    index_missing = [idx for idx in index_cols if idx not in df.columns]
+    if index_missing:
+        raise ValueError(f"{index_missing} Missing From DataFrame")
+
+    sb_string = "_sb_included" if sb else ""
+    file_name = f"Points_Results_{dir}_{player_type}{sb_string}.xlsx"
+    full_path = os.path.join(SAVE_FOLDER, file_name)
+
+    print(full_path)
+    print(SAVE_FOLDER)
+
+    df.reset_index(inplace=True)
+    export_cols = index_cols + base_cols
+    with pd.ExcelWriter(full_path) as writer:
+        df[export_cols].to_excel(writer, sheet_name=player_type, index=False)
+
+    gcs_blob_path = f"results/{file_name}"
+    upload_to_bucket(full_path, gcs_blob_path)
+
+    return file_name

@@ -191,6 +191,24 @@ def parse_pitcher_config_categories():
 
     return counting, cat_opps
 
+
+def parse_hitter_points_config() -> dict:
+    """Return the hitter points-scoring weights dict from config.yml.
+    Keys are stat names, values are numeric point values (may be negative/zero).
+    """
+    cfg = load_config()
+    raw = cfg.get("points", {}).get("hitters", {})
+    return {k: float(v) for k, v in raw.items()}
+
+
+def parse_pitcher_points_config() -> dict:
+    """Return the pitcher points-scoring weights dict from config.yml.
+    Keys are stat names, values are numeric point values (may be negative/zero).
+    """
+    cfg = load_config()
+    raw = cfg.get("points", {}).get("pitchers", {})
+    return {k: float(v) for k, v in raw.items()}
+
 def build_config_hitter_counts():
     cfg = load_config()
     roster_positions = {}
