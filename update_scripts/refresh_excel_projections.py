@@ -159,17 +159,15 @@ def main():
     options = Options()
     
     if running_in_docker:
-        wait_for_selenium()
-        
-        options = Options()
-        options.add_argument("--headless=new")  
+        options.add_argument("--headless=new")
         options.add_argument("--no-sandbox")  # Required inside Docker
-        options.add_argument("--disable-dev-shm-usage")  
-        options.add_argument("--disable-gpu")  # Disable GPU acceleration
+        options.add_argument("--disable-dev-shm-usage")
+        options.add_argument("--disable-gpu")
+        options.add_argument("--window-size=1920,1080")
 
-        print("Running inside Docker, using pre-installed ChromeDriver...")
-        driver = webdriver.Remote(command_executor=SELENIUM_GRID_URL, options=options)
-        
+        print("Running inside Docker, using locally installed ChromeDriver...")
+        driver = webdriver.Chrome(service=Service("/usr/local/bin/chromedriver"), options=options)
+
     else:
         options.add_argument("--start-maximized")
 
