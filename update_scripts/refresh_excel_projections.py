@@ -15,6 +15,7 @@ from webdriver_manager.chrome import ChromeDriverManager
 from dotenv import load_dotenv
 
 from google.cloud import storage
+from utils.docker_running import is_running_in_docker
 
 SELENIUM_GRID_URL = "http://selenium:4444/wd/hub"
 
@@ -155,7 +156,7 @@ def upload_to_bucket(local_file_path, gcs_blob_name, bucket_name="fantasysgpsyst
             
 def main():
     # **Detect if running inside Docker**
-    running_in_docker = os.path.exists("/.dockerenv")
+    running_in_docker = is_running_in_docker()
     options = Options()
     
     if running_in_docker:
