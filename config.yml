@@ -1,7 +1,7 @@
 # config.yml
 
 # Set to false on machines without GCS credentials to skip all uploads/downloads.
-use_gcs: false
+use_gcs: true
 
 defaults:
   weeks_in_season: 26
@@ -83,13 +83,13 @@ points:
 export:
   output_dir: "outputs"
 
-# FanGraphs Auction Calculator settings
-# These drive the URL built dynamically in the update scripts
+# FanGraphs Auction Calculator settings.
+# These drive the URL built dynamically in refresh_excel_projections.py.
 auction_calculator:
   dollars: 260               # Total auction budget per team
   hitter_pitcher_split: 65   # % of budget allocated to hitters
   min_bid: 1                 # Minimum bid
   bench: 1                   # Total bench/reserve spots
 
-  # Order in which FanGraphs prioritizes assigning players to roster slots
+  # Order in which FanGraphs prioritizes assigning players to roster slots.
   position_priority: [C, 2B, OF, SS, 3B, 1B]
