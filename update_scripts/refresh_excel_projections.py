@@ -355,8 +355,14 @@ def main():
     # Download each dataset
     for filename, url in PROJECTIONS_URLS.items():
         print(f"\n Processing: {filename}")
-        save_path = os.path.join(SAVE_FOLDER, f"{filename}.xlsx") if "fangraphs" in filename else os.path.join(SAVE_FOLDER_AUC, f"{filename}.xlsx")
-        gcs_blob_name = f"projections/{filename}.xlsx" if "fangraphs" in filename else f"auction_calculator_exports/{filename}.xlsx"
+        _subdir = "hitting" if "hitting" in filename else "pitching"
+        if "fangraphs" in filename:
+            save_path    = os.path.join(SAVE_FOLDER,     _subdir, f"{filename}.xlsx")
+            gcs_blob_name = f"projections/{_subdir}/{filename}.xlsx"
+        else:  # auc_calc
+            save_path    = os.path.join(SAVE_FOLDER_AUC, _subdir, f"{filename}.xlsx")
+            gcs_blob_name = f"auction_calculator_exports/{_subdir}/{filename}.xlsx"
+        os.makedirs(os.path.dirname(save_path), exist_ok=True)
         download_fangraphs_csv(driver, url, save_path)
         upload_to_bucket(save_path, gcs_blob_name)
         
