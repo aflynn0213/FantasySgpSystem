@@ -138,6 +138,8 @@ def upload_to_bucket(local_file_path, gcs_blob_name, bucket_name="fantasysgpsyst
         print(f"Failed to upload {local_file_path} to GCS: {e}")
 
 def get_repo_root() -> str:
+    if os.environ.get("RUNNING_IN_DOCKER"):
+        return "/FantasySgpSystem"
     return subprocess.check_output(
         ["git", "rev-parse", "--show-toplevel"],
         text=True

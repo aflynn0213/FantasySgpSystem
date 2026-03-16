@@ -4,8 +4,10 @@ import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 import time
+from urllib.parse import quote
 import pandas as pd
 import requests
+import yaml
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
@@ -15,6 +17,15 @@ from webdriver_manager.chrome import ChromeDriverManager
 from dotenv import load_dotenv
 
 from google.cloud import storage
+from utils.docker_running import is_running_in_docker
+from utils.common_utils import get_repo_root
+
+# ---------------------------------------------------------------------------
+# Config
+# ---------------------------------------------------------------------------
+_CONFIG_PATH = os.path.join(get_repo_root(), "config.yml")
+with open(_CONFIG_PATH) as _f:
+    CONFIG = yaml.safe_load(_f)
 
 SELENIUM_GRID_URL = "http://selenium:4444/wd/hub"
 
@@ -34,18 +45,182 @@ DOWNLOAD_FOLDER = os.path.join(HOME_DIR, "Downloads")
 
 # URLs
 LOGIN_URL = "https://blogs.fangraphs.com/wp-login.php"
-PROJECTIONS_URLS = {
-    #"fangraphs_hitting_atc":    "https://www.fangraphs.com/projections?type=atc&stats=bat&pos=all",
-    "fangraphs_hitting_batx":   "https://www.fangraphs.com/projections?pos=all&stats=bat&type=thebatx",
-    #"fangraphs_pitching_atc":   "https://www.fangraphs.com/projections?type=atc&stats=pit&pos=all",
-    #"fangraphs_pitching_oopsy": "https://www.fangraphs.com/projections?type=oopsy&stats=pit&pos=all",
-    "fangraphs_pitching_batx":  "https://www.fangraphs.com/projections?type=thebat&stats=pit&pos=all",
-    #"auc_calc_hitting_atc":     "https://www.fangraphs.com/fantasy-tools/auction-calculator?teams=12&lg=MLB&dollars=260&mb=1&mp=20&msp=10&mrp=1&type=bat&players=&proj=atc&split=65&points=c%7C1%2C2%2C3%2C4%2C5%2C6%7C13%2C14%2C2%2C3%2C4%2C8&rep=0&drp=0&pp=C%2C2B%2COF%2CSS%2C3B%2C1B&pos=1%2C1%2C1%2C1%2C5%2C1%2C1%2C1%2C0%2C1%2C9%2C3%2C0%2C1%2C0&sort=&view=0",
-    "auc_calc_hitting_batx":    "https://www.fangraphs.com/fantasy-tools/auction-calculator?teams=12&lg=MLB&dollars=260&mb=1&mp=20&msp=10&mrp=1&type=bat&players=&proj=thebatx&split=65&points=c%7C1%2C2%2C3%2C4%2C5%2C6%7C13%2C14%2C2%2C3%2C4%2C8&rep=0&drp=0&pp=C%2C2B%2COF%2CSS%2C3B%2C1B&pos=1%2C1%2C1%2C1%2C5%2C1%2C1%2C1%2C0%2C1%2C9%2C3%2C0%2C1%2C0&sort=&view=0",
-    #"auc_calc_pitching_atc":    "https://www.fangraphs.com/fantasy-tools/auction-calculator?teams=12&lg=MLB&dollars=260&mb=1&mp=20&msp=10&mrp=1&type=pit&players=&proj=atc&split=65&points=c%7C1%2C2%2C3%2C4%2C5%2C6%7C13%2C14%2C2%2C3%2C4%2C8&rep=0&drp=0&pp=C%2C2B%2COF%2CSS%2C3B%2C1B&pos=1%2C1%2C1%2C1%2C5%2C1%2C1%2C1%2C0%2C1%2C9%2C3%2C0%2C1%2C0&sort=&view=0",
-    #"auc_calc_pitching_oopsy":  "https://www.fangraphs.com/fantasy-tools/auction-calculator?teams=12&lg=MLB&dollars=260&mb=1&mp=20&msp=10&mrp=1&type=pit&players=&proj=oopsy&split=65&points=c%7C1%2C2%2C3%2C4%2C5%2C6%7C13%2C14%2C2%2C3%2C4%2C8&rep=0&drp=0&pp=C%2C2B%2COF%2CSS%2C3B%2C1B&pos=1%2C1%2C1%2C1%2C5%2C1%2C1%2C1%2C0%2C1%2C9%2C3%2C0%2C1%2C0&sort=&view=0",
-    "auc_calc_pitching_batx":   "https://www.fangraphs.com/fantasy-tools/auction-calculator?teams=12&lg=MLB&dollars=260&mb=1&mp=20&msp=10&mrp=1&type=pit&players=&proj=thebat&split=65&points=c%7C1%2C2%2C3%2C4%2C5%2C6%7C13%2C14%2C2%2C3%2C4%2C8&rep=0&drp=0&pp=C%2C2B%2COF%2CSS%2C3B%2C1B&pos=1%2C1%2C1%2C1%2C5%2C1%2C1%2C1%2C0%2C1%2C9%2C3%2C0%2C1%2C0&sort=&view=0"
+
+# ---------------------------------------------------------------------------
+# FanGraphs stat-ID lookup tables (used by build_auction_url)
+# Keys match the stat names used in config.yml → categories.
+# ---------------------------------------------------------------------------
+_HITTER_STAT_IDS: dict[str, int] = {
+    "R":     1,
+    "HR":    2,
+    "RBI":   3,
+    "SB":    4,
+    "OBP":   5,
+    "SLG":   6,
+    "AVG":   7,
+    "H":     8,
+    "TB":    9,
+    "BB":    10,
+    "PA":    11,
+    "AB":    12,
 }
+
+_PITCHER_STAT_IDS: dict[str, int] = {
+    "W":      1,
+    "SO":     2,
+    "ERA":    3,
+    "WHIP":   4,
+    "SV":     5,
+    "K9":     6,
+    "BB9":    7,
+    "K/BB":   8,
+    "IP":     9,
+    "QS":     13,
+    "SV_HLD": 14,
+    "HLD":    15,
+}
+
+# FanGraphs fixed position order for the `pos` query-string array.
+# Each entry maps to an index in the 15-element roster array.
+# [12] = generic P flex slot (unused), [13] = universal bench, [14] = extra RP bench
+_FANGRAPHS_POS_ORDER = [
+    "C", "1B", "2B", "SS", "OF", "3B", "CI", "MI",
+    "DH", "UTIL", "SP", "RP", "P_FLEX", "BENCH", "BENCH_RP",
+]
+
+
+def build_auction_url(proj: str, player_type: str, cfg: dict = None) -> str:
+    """
+    Build a FanGraphs Auction Calculator URL driven entirely by config.yml.
+
+    Parameters
+    ----------
+    proj        : projection system slug, e.g. 'atc', 'thebatx', 'oopsy'
+    player_type : 'bat' for hitters, 'pit' for pitchers
+    cfg         : parsed config dict (defaults to module-level CONFIG)
+    """
+    if cfg is None:
+        cfg = CONFIG
+
+    defaults   = cfg.get("defaults", {})
+    pos_counts = cfg.get("hitter_position_counts", {})
+    auc        = cfg.get("auction_calculator", {})
+    categories = cfg.get("categories", {})
+
+    teams   = defaults.get("num_teams", 12)
+    dollars = auc.get("dollars", 260)
+    split   = auc.get("hitter_pitcher_split", 65)
+    mb      = auc.get("min_bid", 1)
+    bench   = auc.get("bench", 0)
+
+    # --- pos array ----------------------------------------------------------
+    # FanGraphs fixed order: C,1B,2B,SS,OF,3B,CI,MI,DH,UTIL,SP,RP,bench_bat,bench_SP,bench_RP
+    num_sp = defaults.get("num_starters", 8)
+    num_rp = defaults.get("num_relievers", 4)
+
+    pos_values = {
+        "C":         pos_counts.get("C",    0),
+        "1B":        pos_counts.get("1B",   0),
+        "2B":        pos_counts.get("2B",   0),
+        "SS":        pos_counts.get("SS",   0),
+        "OF":        pos_counts.get("OF",   0),
+        "3B":        pos_counts.get("3B",   0),
+        "CI":        pos_counts.get("CI",   0),
+        "MI":        pos_counts.get("MI",   0),
+        "DH":        pos_counts.get("DH",   0),
+        "UTIL":      pos_counts.get("UTIL", 0),
+        "SP":     num_sp,
+        "RP":     num_rp,
+        "P_FLEX": 0,      # generic pitcher flex slot — not used
+        "BENCH":  bench,  # universal bench (hitters + pitchers)
+        "BENCH_RP": 0,
+    }
+    pos_str = ",".join(str(pos_values[p]) for p in _FANGRAPHS_POS_ORDER)
+
+    # --- pp: position priority order for player assignment -----------------
+    # Use explicit list from config if provided, otherwise fall back to
+    # real positions in config key order (excluding utility slots).
+    _UTILITY_SLOTS = {"MI", "CI", "UTIL", "DH"}
+    default_pp = [p for p in pos_counts if p not in _UTILITY_SLOTS and pos_counts[p] > 0]
+    pp_positions = auc.get("position_priority", default_pp)
+
+    # --- scoring categories → stat IDs ------------------------------------
+    hitter_cats = categories.get("hitters", {})
+    hitter_names = (
+        hitter_cats.get("counting", []) +
+        [rate[0] for rate in hitter_cats.get("rate", [])]
+    )
+    hitter_ids = [str(_HITTER_STAT_IDS[s]) for s in hitter_names if s in _HITTER_STAT_IDS]
+
+    pitcher_cats = categories.get("pitchers", {})
+    pitcher_names = (
+        pitcher_cats.get("counting", []) +
+        [rate[0] for rate in pitcher_cats.get("rate", [])]
+    )
+    pitcher_ids = [str(_PITCHER_STAT_IDS[s]) for s in pitcher_names if s in _PITCHER_STAT_IDS]
+
+    points_str = f"c|{','.join(hitter_ids)}|{','.join(pitcher_ids)}"
+
+    # --- assemble URL -------------------------------------------------------
+    # mp/msp/mrp are FanGraphs internal max-salary-% guardrails; not exposed in the UI
+    # so we keep them at FanGraphs defaults (20/10/1) rather than cluttering config.
+    params = [
+        ("teams",   teams),
+        ("lg",      "MLB"),
+        ("dollars", dollars),
+        ("mb",      mb),
+        ("mp",      20),
+        ("msp",     10),
+        ("mrp",     1),
+        ("type",    player_type),
+        ("players", ""),
+        ("proj",    proj),
+        ("split",   split),
+        ("points",  points_str),
+        ("rep",     0),
+        ("drp",     0),
+        ("pp",      ",".join(pp_positions)),
+        ("pos",     pos_str),
+        ("sort",    ""),
+        ("view",    0),
+    ]
+    query = "&".join(f"{k}={quote(str(v), safe='')}" for k, v in params)
+    return f"https://www.fangraphs.com/fantasy-tools/auction-calculator?{query}"
+
+
+# Projection download URLs — raw FanGraphs data exports.
+# Auction-calculator entries are built dynamically from config.yml via build_auction_url().
+#
+# ── TEST URLS (current config snapshot) ──────────────────────────────────────
+# Copy into a browser to verify the auction calculator loads with the right settings.
+#
+# auc_calc_hitting_atc:
+#   https://www.fangraphs.com/fantasy-tools/auction-calculator?teams=12&lg=MLB&dollars=260&mb=1&mp=20&msp=10&mrp=1&type=bat&players=&proj=atc&split=65&points=c%7C1%2C2%2C3%2C4%2C5%2C6%7C13%2C14%2C2%2C3%2C4%2C8&rep=0&drp=0&pp=C%2C2B%2COF%2CSS%2C3B%2C1B&pos=1%2C1%2C1%2C1%2C5%2C1%2C1%2C1%2C0%2C1%2C8%2C4%2C0%2C1%2C0&sort=&view=0
+#
+# auc_calc_pitching_atc:
+#   https://www.fangraphs.com/fantasy-tools/auction-calculator?teams=12&lg=MLB&dollars=260&mb=1&mp=20&msp=10&mrp=1&type=pit&players=&proj=atc&split=65&points=c%7C1%2C2%2C3%2C4%2C5%2C6%7C13%2C14%2C2%2C3%2C4%2C8&rep=0&drp=0&pp=C%2C2B%2COF%2CSS%2C3B%2C1B&pos=1%2C1%2C1%2C1%2C5%2C1%2C1%2C1%2C0%2C1%2C8%2C4%2C0%2C1%2C0&sort=&view=0
+#
+# auc_calc_pitching_oopsy:
+#   https://www.fangraphs.com/fantasy-tools/auction-calculator?teams=12&lg=MLB&dollars=260&mb=1&mp=20&msp=10&mrp=1&type=pit&players=&proj=oopsy&split=65&points=c%7C1%2C2%2C3%2C4%2C5%2C6%7C13%2C14%2C2%2C3%2C4%2C8&rep=0&drp=0&pp=C%2C2B%2COF%2CSS%2C3B%2C1B&pos=1%2C1%2C1%2C1%2C5%2C1%2C1%2C1%2C0%2C1%2C8%2C4%2C0%2C1%2C0&sort=&view=0
+#
+# (pos array: C=1,1B=1,2B=1,SS=1,OF=5,3B=1,CI=1,MI=1,DH=0,UTIL=1,SP=8,RP=4,P_flex=0,bench=1,0)
+# (points:    hitters=R,HR,RBI,SB,OBP,SLG  pitchers=QS,SV_HLD,SO,ERA,WHIP,K/BB)
+# ─────────────────────────────────────────────────────────────────────────────
+PROJECTIONS_URLS = {
+    "fangraphs_hitting_atc":    "https://www.fangraphs.com/projections?type=atc&stats=bat&pos=all",
+    #"fangraphs_hitting_batx":   "https://www.fangraphs.com/projections?pos=all&stats=bat&type=thebatx",
+    "fangraphs_pitching_atc":   "https://www.fangraphs.com/projections?type=atc&stats=pit&pos=all",
+    "fangraphs_pitching_oopsy": "https://www.fangraphs.com/projections?type=oopsy&stats=pit&pos=all",
+    #"fangraphs_pitching_batx":  "https://www.fangraphs.com/projections?type=thebat&stats=pit&pos=all",
+
+    # Auction-calculator URLs — generated from config.yml (teams, positions, categories, budget).
+    "auc_calc_hitting_atc":    build_auction_url("atc",     "bat"),
+    #"auc_calc_hitting_batx":  build_auction_url("thebatx", "bat"),
+    "auc_calc_pitching_atc":   build_auction_url("atc",     "pit"),
+    "auc_calc_pitching_oopsy": build_auction_url("oopsy",   "pit"),
+    #"auc_calc_pitching_batx": build_auction_url("thebatx", "pit"),
+}
+
 
 BASE_DIR = os.path.abspath(os.getcwd())
 
@@ -155,21 +330,19 @@ def upload_to_bucket(local_file_path, gcs_blob_name, bucket_name="fantasysgpsyst
             
 def main():
     # **Detect if running inside Docker**
-    running_in_docker = os.path.exists("/.dockerenv")
+    running_in_docker = is_running_in_docker()
     options = Options()
     
     if running_in_docker:
-        wait_for_selenium()
-        
-        options = Options()
-        options.add_argument("--headless=new")  
+        options.add_argument("--headless=new")
         options.add_argument("--no-sandbox")  # Required inside Docker
-        options.add_argument("--disable-dev-shm-usage")  
-        options.add_argument("--disable-gpu")  # Disable GPU acceleration
+        options.add_argument("--disable-dev-shm-usage")
+        options.add_argument("--disable-gpu")
+        options.add_argument("--window-size=1920,1080")
 
-        print("Running inside Docker, using pre-installed ChromeDriver...")
-        driver = webdriver.Remote(command_executor=SELENIUM_GRID_URL, options=options)
-        
+        print("Running inside Docker, using locally installed ChromeDriver...")
+        driver = webdriver.Chrome(service=Service("/usr/local/bin/chromedriver"), options=options)
+
     else:
         options.add_argument("--start-maximized")
 
