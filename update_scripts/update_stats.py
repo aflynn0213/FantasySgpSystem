@@ -196,20 +196,25 @@ def main():
         print(f"\n Processing: {filename}")
         
         if "auc_calc" in filename:
-            save_path = os.path.join(SAVE_FOLDER_AUC, f"{filename}.xlsx") 
-            gcs_blob_name = f"auction_calculator_exports/{filename}.xlsx"
+            _subdir = "hitting" if "hitting" in filename else "pitching"
+            save_path    = os.path.join(SAVE_FOLDER_AUC, _subdir, f"{filename}.xlsx")
+            gcs_blob_name = f"auction_calculator_exports/{_subdir}/{filename}.xlsx"
         elif "ros" in filename:
-            save_path = os.path.join(SAVE_FOLDER_ROS, f"{filename}.xlsx") 
-            gcs_blob_name = f"ros/{filename}.xlsx"
+            _subdir = "hitting" if "hitting" in filename else "pitching"
+            save_path    = os.path.join(SAVE_FOLDER_ROS, _subdir, f"{filename}.xlsx")
+            gcs_blob_name = f"ros/{_subdir}/{filename}.xlsx"
         elif "stats" in filename:
-            save_path = os.path.join(SAVE_FOLDER, f"{filename}.xlsx") 
-            gcs_blob_name = f"stats/{filename}.xlsx"
+            _subdir = "hitting" if "hitting" in filename else "pitching"
+            save_path    = os.path.join(SAVE_FOLDER, _subdir, f"{filename}.xlsx")
+            gcs_blob_name = f"stats/{_subdir}/{filename}.xlsx"
         elif "eoy" in filename:
-            save_path = os.path.join(SAVE_FOLDER, f"{filename}.xlsx") 
-            gcs_blob_name = f"eoy/{filename}.xlsx"
+            _subdir = "hitting" if "hitting" in filename else "pitching"
+            save_path    = os.path.join(SAVE_FOLDER_EOY, _subdir, f"{filename}.xlsx")
+            gcs_blob_name = f"eoy/{_subdir}/{filename}.xlsx"
         else:
             continue  # Skip unknown file types
         
+        os.makedirs(os.path.dirname(save_path), exist_ok=True)
         print("Downloading Fangraphs Data...")
         download_fangraphs_csv(DOWNLOAD_FOLDER, driver, url, save_path)
 
