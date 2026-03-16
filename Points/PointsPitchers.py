@@ -92,7 +92,7 @@ class PointsPitchers:
         Simple TBF-scale  (HR, R,HBP)           -> new_TBF / old_TBF × stat
         """
         play_time_df = pd.read_excel(
-            f"projections/fangraphs_pitching_{ip_adj}.xlsx", sheet_name=0
+            f"projections/pitching/fangraphs_pitching_{ip_adj}.xlsx", sheet_name=0
         )
         play_time_df["PlayerId"] = play_time_df["PlayerId"].astype(str)
         play_time_df = play_time_df.rename(columns={"IP": "new_IP", "TBF": "new_TBF"})
