@@ -25,37 +25,37 @@ class ExcelProjectionLoader(IProjectionLoader):
         print("Loading projection data...")
         if period == 'pre':
             data["weeks"] = 26
-            data["proj_read"] = pd.read_excel(f'projections/fangraphs_{player_type}_{proj_base}.xlsx', sheet_name=0)
+            data["proj_read"] = pd.read_excel(f'projections/{player_type}/fangraphs_{player_type}_{proj_base}.xlsx', sheet_name=0)
             data["stats"] = data["proj_read"].drop_duplicates(subset=['Name', 'PlayerId'])
 
             print("Loading auction calculator data...")
-            data["auc_calc"] = pd.read_excel(f"auction_calculator_exports/auc_calc_{player_type}_{proj_base}.xlsx", sheet_name=0)
+            data["auc_calc"] = pd.read_excel(f"auction_calculator_exports/{player_type}/auc_calc_{player_type}_{proj_base}.xlsx", sheet_name=0)
 
         elif period == 'td':
             data["weeks"] = self.weeks
-            data["proj_read"] = pd.read_excel(f'projections/fangraphs_{player_type}_{proj_base}.xlsx', sheet_name=0)
-            data["stats"] = pd.read_excel(f"stats/fangraphs_{player_type}_stats.xlsx",sheet_name=0)
+            data["proj_read"] = pd.read_excel(f'projections/{player_type}/fangraphs_{player_type}_{proj_base}.xlsx', sheet_name=0)
+            data["stats"] = pd.read_excel(f"stats/{player_type}/fangraphs_{player_type}_stats.xlsx",sheet_name=0)
 
             print("Loading auction calculator data...")
-            data["auc_calc"] = pd.read_excel(f"auction_calculator_exports/auc_calc_{player_type}_{proj_base}.xlsx", sheet_name=0)
+            data["auc_calc"] = pd.read_excel(f"auction_calculator_exports/{player_type}/auc_calc_{player_type}_{proj_base}.xlsx", sheet_name=0)
 
         elif period == 'ros':
             data["weeks"] = 26 - self.weeks
-            data["stats"] = pd.read_excel(f"ros/fangraphs_{player_type}_{proj_base}_ros.xlsx",sheet_name=0)
+            data["stats"] = pd.read_excel(f"ros/{player_type}/fangraphs_{player_type}_{proj_base}_ros.xlsx",sheet_name=0)
             data["proj_read"] = data["stats"].copy()
 
             print("Loading auction calculator data...")
             #Unique auc_calc since this one uses proj ({proj_base}_ros)
             #Use this for playing time consideration averages for the rest of the season expectations
-            data["auc_calc"] = pd.read_excel(f"auction_calculator_exports/auc_calc_{player_type}_{proj}.xlsx", sheet_name=0)
+            data["auc_calc"] = pd.read_excel(f"auction_calculator_exports/{player_type}/auc_calc_{player_type}_{proj}.xlsx", sheet_name=0)
             
         elif period == 'eoy':
             data["weeks"] = 26
-            data["stats"] = pd.read_excel(f"stats/fangraphs_{player_type}_stats.xlsx",sheet_name=0)
+            data["stats"] = pd.read_excel(f"stats/{player_type}/fangraphs_{player_type}_stats.xlsx",sheet_name=0)
             data["proj_read"] = data["stats"].copy()
 
             print("Loading auction calculator data...")
-            data["auc_calc"] = pd.read_excel(f"auction_calculator_exports/auc_calc_{player_type}_{period}.xlsx", sheet_name=0)
+            data["auc_calc"] = pd.read_excel(f"auction_calculator_exports/{player_type}/auc_calc_{player_type}_{period}.xlsx", sheet_name=0)
 
         else:
             valid_periods = ['pre', 'td', 'ros', 'eoy']
