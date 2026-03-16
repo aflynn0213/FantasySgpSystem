@@ -15,7 +15,11 @@ class SgpProcessor:
         temp_hitters = sgp_hitters.sgp_df.copy()
         temp_pitchers = sgp_pitchers.sgp_df.copy()
         temp_auc_hit = sgp_hitters.auc_calc.copy()
+        temp_auc_pit = sgp_pitchers.auc_calc.copy()
         self.suffix = f"{sgp_hitters.proj}_{sgp_pitchers.proj}"
+        # Context metadata written into the output filename
+        self.ip_adj = getattr(sgp_pitchers, 'ip_adj', None)
+        self.period = getattr(sgp_hitters, 'period', 'pre')
         print(temp_pitchers)
         self.sufficient_pos_counts,self.position_mapping = build_config_hitter_counts()
         
@@ -23,7 +27,7 @@ class SgpProcessor:
         print("Preparing hitter data...")
         self.hitters_df = self.prepare_data(temp_hitters, 'Hitter', sgp_hitters.sb_included, temp_auc_hit)
         print("Preparing pitcher data...")
-        self.pitchers_df = self.prepare_data(temp_pitchers, 'Pitcher')
+        self.pitchers_df = self.prepare_data(temp_pitchers, 'Pitcher', auc_calc=temp_auc_pit)
         
         cols_in_hitters_df = ['Name', 'PlayerId', 'Total_SGP', 'RL', 'VAR']
         sorter = 'VAR'
@@ -52,7 +56,8 @@ class SgpProcessor:
             
             if self.weeks == 26:
                 auc_calc = auc_calc.rename(columns={'POS': 'ELIG'})
-                df = df.merge(auc_calc[['PlayerId', 'ELIG']], on='PlayerId', how='left')
+                _auc_extra = ['ELIG'] + [c for c in ['ADP', 'Dollars'] if c in auc_calc.columns]
+                df = df.merge(auc_calc[['PlayerId'] + _auc_extra], on='PlayerId', how='left')
                 
                 # Apply function to create POS column
                 df['POS'] = df['ELIG'].apply(self.determine_pos)
@@ -73,8 +78,16 @@ class SgpProcessor:
         else:
             df['Total_SGP'] = df.iloc[:, 2:8].sum(axis=1)
             df['Starter'] = np.where(df['GS'] > 5, 1, 0)
+            # Human-readable role column for the UI
+            df['Role'] = np.where(df['GS'] > 5, 'SP', 'RP')
             
             df = df.sort_values(by="Total_SGP", ascending=False).reset_index()
+            
+            # Merge pitcher ADP / ELIG / Dollars from auc_calc if provided
+            if auc_calc is not None:
+                _p_auc = auc_calc.rename(columns={'POS': 'ELIG'})
+                _p_extra = ['ELIG'] + [c for c in ['ADP', 'Dollars'] if c in _p_auc.columns]
+                df = df.merge(_p_auc[['PlayerId'] + _p_extra], on='PlayerId', how='left')
             
             print("Computing replacement level for pitchers...")
             starter_rl = df[df["Starter"] == 1]["Total_SGP"].iloc[96]
@@ -230,12 +243,24 @@ class SgpProcessor:
         SAVE_FOLDER = os.path.join(os.getcwd(), "results")
         os.makedirs(SAVE_FOLDER,exist_ok=True)
         
-        sb_string = "_sb_included" if sb else ""
-        file_name = f"results/SGP_Results_{self.suffix}{sb_string}.xlsx"
+        # ── New consistent naming: SGP_{h}_{p}[_{ip_adj}]_{period}[_sb].xlsx ──
+        sb_string = "_sb" if sb else ""
+        ip_string = f"_{self.ip_adj}" if self.ip_adj else ""
+        file_name = f"results/SGP_{self.suffix}{ip_string}_{self.period}{sb_string}.xlsx"
+        
+        # Defensive column lists – only export columns that actually exist
+        _h_want = ['Name', 'PlayerId', 'ELIG', 'ADP', 'PA',
+                   'SGP_R', 'SGP_HR', 'SGP_RBI', 'SGP_SB', 'SGP_OBP', 'SGP_SLG',
+                   'Total_SGP_wSB', 'Total_SGP', 'RL', 'VAR']
+        _p_want = ['Name', 'PlayerId', 'ELIG', 'Role', 'ADP', 'IP', 'GS',
+                   'SGP_SO', 'SGP_QS', 'SGP_SV_HLD', 'SGP_ERA', 'SGP_WHIP', 'SGP_K/BB',
+                   'Total_SGP', 'RL', 'VAR']
+        hitter_cols  = [c for c in _h_want if c in self.hitters_df.columns]
+        pitcher_cols = [c for c in _p_want if c in self.pitchers_df.columns]
         
         with pd.ExcelWriter(file_name) as writer:
-            self.hitters_df[['Name', 'PlayerId', 'PA', 'SGP_R', 'SGP_HR', 'SGP_RBI', 'SGP_SB', 'SGP_OBP', 'SGP_SLG', 'Total_SGP_wSB', 'Total_SGP', 'RL', 'VAR']].to_excel(writer, sheet_name='Hitters', index=False)
-            self.pitchers_df[['Name', 'PlayerId', 'IP', 'SGP_SO', 'SGP_QS', 'SGP_SV_HLD', 'SGP_ERA', 'SGP_WHIP', 'SGP_K/BB', 'Total_SGP', 'RL', 'VAR']].to_excel(writer, sheet_name='Pitchers', index=False)
+            self.hitters_df[hitter_cols].to_excel(writer, sheet_name='Hitters', index=False)
+            self.pitchers_df[pitcher_cols].to_excel(writer, sheet_name='Pitchers', index=False)
             self.combined_df.to_excel(writer, sheet_name='Combined', index=False)
         
         wb = load_workbook(file_name)
