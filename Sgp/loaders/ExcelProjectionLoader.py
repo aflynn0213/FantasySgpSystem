@@ -9,8 +9,8 @@ class ExcelProjectionLoader(IProjectionLoader):
     """
     Loader class that reads local Excel files using pandas.read_excel.
     """
-    def __init__(self, base_dir: str = get_repo_root(), weeks: int = 26):
-        self.base_dir = base_dir
+    def __init__(self, base_dir: str = None, weeks: int = 26):
+        self.base_dir = base_dir if base_dir is not None else get_repo_root()
         self.weeks = weeks
 
     def load(self, proj: str, player_type: str, ip_adj: str = None) -> Dict[str, Any]:
