@@ -5,8 +5,8 @@ import pandas as pd
 
 from utils.common_utils import upload_to_bucket, get_repo_root
 
-hitter_export_cols = ['PA', 'SGP_R', 'SGP_HR', 'SGP_RBI', 'SGP_SB', 'SGP_OBP', 'SGP_SLG', 'Total_SGP_wSB', 'Total_SGP']
-pitcher_export_cols = ['IP', 'GS', 'SGP_SO', 'SGP_QS', 'SGP_SV_HLD', 'SGP_ERA', 'SGP_WHIP', 'SGP_K/BB', 'Total_SGP']
+hitter_export_cols = ['ELIG', 'ADP', 'PA', 'SGP_R', 'SGP_HR', 'SGP_RBI', 'SGP_SB', 'SGP_OBP', 'SGP_SLG', 'Total_SGP_wSB', 'Total_SGP']
+pitcher_export_cols = ['ELIG', 'Role', 'ADP', 'IP', 'GS', 'SGP_SO', 'SGP_QS', 'SGP_SV_HLD', 'SGP_ERA', 'SGP_WHIP', 'SGP_K/BB', 'Total_SGP']
 combined_export_cols = ['Total_SGP', 'RL', 'VAR']
 index_cols = ['Name','PlayerId']
 
@@ -25,18 +25,21 @@ def export_sgp(df,sb,dir,player_type):
     else:
         export_cols = []
     
-    column_missing = [col for col in export_cols if col not in df.columns]
+    column_missing = [col for col in export_cols if col not in df.columns and col in {'PA','IP','SGP_R','SGP_HR','SGP_RBI','SGP_SB','SGP_OBP','SGP_SLG','Total_SGP_wSB','SGP_SO','SGP_QS','SGP_SV_HLD','SGP_ERA','SGP_WHIP','SGP_K/BB','Total_SGP','RL','VAR'}]
     index_missing = [index for index in index_cols if index not in df.columns]
 
     if column_missing:
         raise ValueError(f"{column_missing} Missing From DataFrame")
     elif index_missing:
-        raise ValueError(f"{index_missing} Missing From DataFrame")            
+        raise ValueError(f"{index_missing} Missing From DataFrame")
+
+    # Only export columns that actually exist (ELIG/ADP/Role are optional)
+    export_cols = [c for c in export_cols if c in df.columns]            
 
     os.makedirs(SAVE_FOLDER,exist_ok=True)
     
-    sb_string = "_sb_included" if sb else ""
-    file_name = f"SGP_Results_{dir}_{player_type}{sb_string}.xlsx"
+    sb_string = "_sb" if sb else ""
+    file_name = f"SGP_{dir}_{player_type}{sb_string}.xlsx"
     full_path = os.path.join(SAVE_FOLDER, file_name)
     
     print(full_path)
@@ -91,8 +94,8 @@ def export_points(df, sb, dir, player_type):
     if index_missing:
         raise ValueError(f"{index_missing} Missing From DataFrame")
 
-    sb_string = "_sb_included" if sb else ""
-    file_name = f"Points_Results_{dir}_{player_type}{sb_string}.xlsx"
+    sb_string = "_sb" if sb else ""
+    file_name = f"Points_{dir}_{player_type}{sb_string}.xlsx"
     full_path = os.path.join(SAVE_FOLDER, file_name)
 
     print(full_path)
