@@ -1,5 +1,6 @@
 from sqlite3 import DataError
 from typing import Dict
+import os
 import pandas as pd
 
 from utils.common_utils import (get_repo_root, 
@@ -38,7 +39,7 @@ class TeamProcessor():
             temp_df = self.__data["auc_calc"].copy()
         else:
             temp_sheet = self.__data["ip_adj"]
-            temp_df = pd.read_excel(f"auction_calculator_exports/auc_calc_pitching_{temp_sheet}.xlsx",sheet_name=0)
+            temp_df = pd.read_excel(f"auction_calculator_exports/auc_calc_pitching_{temp_sheet}.xlsx", sheet_name=0)
         
         multiplier = 1
         
