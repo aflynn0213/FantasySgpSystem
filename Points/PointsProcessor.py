@@ -95,7 +95,10 @@ class PointsProcessor:
                 auc_calc = auc_calc.rename(columns={"POS": "ELIG"})
                 df = df.merge(auc_calc[["PlayerId", "ELIG"]], on="PlayerId", how="left")
 
-                df.to_excel("temp_players_pts.xlsx")
+                temp_path = os.path.join(get_repo_root(), 'temp_players_pts.xlsx')
+                df.to_excel(temp_path)
+                if is_gcs_enabled():
+                    upload_to_bucket(temp_path, 'debug/temp_players_pts.xlsx')
 
                 print("Computing replacement level (RL) for points hitters...")
                 df = self.compute_replacement_level(df)
@@ -214,6 +217,9 @@ class PointsProcessor:
             fill_df.insert(1, "ASSIGNED_POS", rostered_df["ASSIGNED_POS"].values)
             fill_df.insert(2, "ELIG", rostered_df["ELIG"].values)
             fill_df.to_excel(writer, sheet_name="Bucket Counts", index=False)
+
+        if is_gcs_enabled():
+            upload_to_bucket(debug_path, 'debug/rostered_pts.xlsx')
 
         print(f"Rostered universe identified ({len(rostered_df)} players).")
 
