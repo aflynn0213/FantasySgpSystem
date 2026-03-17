@@ -212,35 +212,70 @@ def parse_pitcher_points_config() -> dict:
     return {k: float(v) for k, v in raw.items()}
 
 def build_config_hitter_counts():
-    cfg = load_config()
-    roster_positions = {}
-    league_positions = {}
+    """Single config read that returns everything both processors need for rostering.
 
-    position_mapping = {'C': 'C', 
-                        '1B': 'CI', 
-                        '2B': 'MI', 
-                        '3B': 'CI', 
-                        'SS': 'MI', 
-                        'OF': 'OF', 
-                        'DH': 'UTIL'}
-    
-    position_mapping_temp = position_mapping.copy()
-    position_mapping_temp.update({'CI': 'CI', 'MI': 'MI', 'UTIL': 'UTIL'})
-    for pos, count in cfg.get("hitter_position_counts", {}).items():
+    Returns:
+        sufficient_pos_counts  – group totals × num_teams  e.g. {C:12, CI:36, MI:36, OF:60, UTIL:12}
+        position_mapping       – individual pos → group     e.g. {'2B':'MI', '1B':'CI', …}
+        ind_slot_limits        – per-position slot totals   e.g. {C:12, 1B:12, 2B:12, OF:60, …}
+        comp_slot_limits       – flex-only slot totals      e.g. {MI:12, CI:12}
+    """
+    cfg = load_config()
+    num_teams  = cfg["defaults"]["num_teams"]
+    pos_counts = cfg.get("hitter_position_counts", {})
+
+    position_mapping = {
+        'C':  'C',
+        '1B': 'CI',
+        '2B': 'MI',
+        '3B': 'CI',
+        'SS': 'MI',
+        'OF': 'OF',
+        'DH': 'UTIL',
+    }
+
+    for pos, count in pos_counts.items():
         if not isinstance(pos, str) or not isinstance(count, int):
             raise ValueError(f"Invalid roster position entry: {pos}: {count}")
-        roster_positions[pos] = count
-    for pos,group in position_mapping_temp.items():
-        league_positions[group] = roster_positions.get(pos, 0) + league_positions.get(group, 0)
-    league_positions = {k: v*12 for k, v in league_positions.items()}
-    
-    print(f"League position counts: {league_positions}")
-    print(f"Total League Rostered Hitters: {sum(league_positions.values())}")
+
+    # Individual dedicated slot limits (one entry per position × num_teams)
+    ind_slot_limits = {pos: pos_counts.get(pos, 0) * num_teams for pos in position_mapping}
+
+    # Composite flex slot limits — MI and CI only (the grp values that aren't C / OF / UTIL)
+    comp_groups    = dict.fromkeys(grp for grp in position_mapping.values() if grp not in ('C', 'OF', 'UTIL'))
+    comp_slot_limits = {grp: pos_counts.get(grp, 0) * num_teams for grp in comp_groups}
+
+    # Group totals (sufficient_pos_counts) — sum individual + composite + UTIL
+    position_mapping_ext = {**position_mapping, 'CI': 'CI', 'MI': 'MI', 'UTIL': 'UTIL'}
+    raw_totals = {}
+    for pos, count in pos_counts.items():
+        grp = position_mapping_ext.get(pos, pos)
+        raw_totals[grp] = raw_totals.get(grp, 0) + count
+    sufficient_pos_counts = {k: v * num_teams for k, v in raw_totals.items()}
+
+    print(f"League position counts: {sufficient_pos_counts}")
+    print(f"Total League Rostered Hitters: {sum(sufficient_pos_counts.values())}")
     print(f"Position mapping: {position_mapping}")
-    
-    return league_positions,position_mapping
 
-    
+    return sufficient_pos_counts, position_mapping, ind_slot_limits, comp_slot_limits
 
-    
-    
+
+def get_position_priority() -> list:
+    """Return the ordered position priority list from config (e.g. ['C','2B','OF','SS',…])."""
+    return load_config().get("position_priority", ['C', '2B', 'OF', 'SS', '3B', '1B', 'DH'])
+
+
+def validate_export_columns(df: "pd.DataFrame", required_cols: list, label: str = "") -> None:
+    """Raise ValueError if any required_cols are absent from df.
+
+    Args:
+        df:            DataFrame to inspect.
+        required_cols: Column names that must be present.
+        label:         Human-readable context string (e.g. 'Hitters SGP') shown in the error.
+    """
+    import pandas as pd  # local import keeps top-level imports unchanged
+    missing = [c for c in required_cols if c not in df.columns]
+    if missing:
+        where = f" ({label})" if label else ""
+        raise ValueError(f"Export column(s) missing{where}: {missing}")
+
