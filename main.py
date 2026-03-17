@@ -5,9 +5,10 @@ from pathlib import Path
 import subprocess
 import yaml
 
-# Ensure all relative file paths resolve from the repo root regardless of
-# where the script is invoked from.
-os.chdir(subprocess.check_output(["git", "rev-parse", "--show-toplevel"], text=True).strip())
+if os.environ.get("RUNNING_IN_DOCKER"):
+    os.chdir("/FantasySgpSystem")
+else:
+    os.chdir(subprocess.check_output(["git", "rev-parse", "--show-toplevel"], text=True).strip())
 
 from Sgp.loaders.ExcelProjectionLoader import ExcelProjectionLoader
 from Sgp.loaders.ExcelLeagueHistLoader import ExcelLeagueHistLoader
