@@ -87,6 +87,9 @@ class PointsHitters:
         self.points_df = raw_pts
 
     def _finalize(self) -> None:
-        """Attach Name/PlayerId and set them as a MultiIndex — mirrors SgpBase._finalize_sgp_df."""
+        """Attach Name/PlayerId (and ADP when available), then set MultiIndex."""
         self.points_df[["Name", "PlayerId"]] = self.stats[["Name", "PlayerId"]].values
+        if "ADP" in self.proj_read.columns:
+            adp_map = self.proj_read.drop_duplicates("PlayerId").set_index("PlayerId")["ADP"]
+            self.points_df["ADP"] = self.stats["PlayerId"].map(adp_map).values
         self.points_df.set_index(["Name", "PlayerId"], inplace=True)
