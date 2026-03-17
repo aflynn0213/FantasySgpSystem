@@ -21,6 +21,8 @@ hitter_position_counts:
   OF: 5
   UTIL: 1
 
+position_priority: ["C", "2B", "OF", "SS", "3B", "1B", "DH"]
+
 league_params:
   workbook_path: "included/leaguehistory.xlsx"
   parameters_sheet: "Parameters"
@@ -82,6 +84,9 @@ points:
       
 export:
   output_dir: "outputs"
+  # Set to true to also write separate per-player-type xlsx files via the utils
+  # export helpers in addition to the combined workbook.  Off by default.
+  separate_files: false
 
 # FanGraphs Auction Calculator settings.
 # These drive the URL built dynamically in refresh_excel_projections.py.
