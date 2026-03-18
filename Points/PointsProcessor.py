@@ -13,7 +13,7 @@ import numpy as np
 from openpyxl import load_workbook
 from openpyxl.styles import Font
 
-from utils.common_utils import build_config_hitter_counts, get_position_priority, get_repo_root, is_gcs_enabled, upload_to_bucket, validate_export_columns
+from utils.common_utils import build_config_hitter_counts, get_pitcher_counts, get_position_priority, get_repo_root, is_gcs_enabled, upload_to_bucket, validate_export_columns
 
 
 class PointsProcessor:
@@ -111,8 +111,9 @@ class PointsProcessor:
             df = df.sort_values(by="Total_PTS", ascending=False).reset_index(drop=True)
 
             print("Computing replacement level for points pitchers...")
-            starter_rl = df[df["Starter"] == 1]["Total_PTS"].iloc[96]
-            reliever_rl = df[df["Starter"] == 0]["Total_PTS"].iloc[48]
+            num_teams, num_sp, num_rp = get_pitcher_counts()
+            starter_rl = df[df["Starter"] == 1]["Total_PTS"].iloc[num_teams * num_sp]
+            reliever_rl = df[df["Starter"] == 0]["Total_PTS"].iloc[num_teams * num_rp]
 
             df["RL"] = df.apply(
                 lambda row: starter_rl if row["Starter"] == 1 else reliever_rl, axis=1
