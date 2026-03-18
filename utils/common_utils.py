@@ -265,6 +265,13 @@ def get_position_priority() -> list:
     return load_config().get("position_priority", ['C', '2B', 'OF', 'SS', '3B', '1B', 'DH'])
 
 
+def get_pitcher_counts() -> tuple[int, int, int]:
+    """Return (num_teams, num_starters, num_relievers) from config defaults."""
+    cfg = load_config()
+    defaults = cfg.get("defaults", {})
+    return defaults["num_teams"], defaults["num_starters"], defaults["num_relievers"]
+
+
 def validate_export_columns(df: "pd.DataFrame", required_cols: list, label: str = "") -> None:
     """Raise ValueError if any required_cols are absent from df.
 
