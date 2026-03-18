@@ -5,7 +5,7 @@ import os
 from openpyxl import load_workbook
 from openpyxl.styles import Font
 
-from utils.common_utils import build_config_hitter_counts, get_position_priority, get_repo_root, is_gcs_enabled, upload_to_bucket, validate_export_columns
+from utils.common_utils import build_config_hitter_counts, get_pitcher_counts, get_position_priority, get_repo_root, is_gcs_enabled, upload_to_bucket, validate_export_columns
 
 class SgpProcessor:
     def __init__(self, sgp_hitters, sgp_pitchers, ip_adj=None):
@@ -79,8 +79,9 @@ class SgpProcessor:
             df = df.sort_values(by="Total_SGP", ascending=False).reset_index()
             
             print("Computing replacement level for pitchers...")
-            starter_rl = df[df["Starter"] == 1]["Total_SGP"].iloc[96]
-            reliever_rl = df[df["Starter"] == 0]["Total_SGP"].iloc[48]
+            num_teams, num_sp, num_rp = get_pitcher_counts()
+            starter_rl = df[df["Starter"] == 1]["Total_SGP"].iloc[num_teams * num_sp]
+            reliever_rl = df[df["Starter"] == 0]["Total_SGP"].iloc[num_teams * num_rp]
             
             df["RL"] = df.apply(lambda row: starter_rl if row["Starter"] == 1 else reliever_rl, axis=1)
             df["VAR"] = df["Total_SGP"] - df["RL"]
