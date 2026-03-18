@@ -5,10 +5,10 @@ use_gcs: true
 
 defaults:
   weeks_in_season: 26
-  num_teams: 12
-  num_bats: 13
-  num_starters: 8
-  num_relievers: 4
+  num_teams: 10
+  num_bats: 10
+  num_starters: 10
+  num_relievers: 2
 
 hitter_position_counts:
   C:  1
@@ -16,10 +16,10 @@ hitter_position_counts:
   2B: 1
   3B: 1
   SS: 1
-  MI: 1
-  CI: 1
-  OF: 5
-  UTIL: 1
+  MI: 0
+  CI: 0
+  OF: 3
+  UTIL: 2
 
 position_priority: ["C", "2B", "OF", "SS", "3B", "1B", "DH"]
 
@@ -48,7 +48,7 @@ points:
     PA:   0
     AB:   0
     # Hit types — a single counts as 1B only (H=0 avoids double-counting)
-    H:    0
+    H:    1
     1B:   1      # single
     2B:   2      # double
     3B:   3      # triple
@@ -58,29 +58,31 @@ points:
     RBI:  1      # run batted in
     # Walks / on-base
     BB:   1      # walk
+    IBB:  1      # intentional walk
     HBP:  1      # hit by pitch
     # Baserunning
-    SB:   2      # stolen base
-    CS:  -1      # caught stealing
+    SB:   1      # stolen base
+    CS:   0      # caught stealing
     # Strikeout penalty
-    SO:  -0.5
+    SO:   0
     # Sacrifice — not typically scored
     SF:   0
     SH:   0
 
   pitchers:
-    IP:   3      # innings pitched  (3 pts/IP is the standard ESPN default)
+    IP:   2      # innings pitched  (3 pts/IP is the standard ESPN default)
     W:    5      # win
-    L:   -5      # loss
+    L:   -3      # loss
     SV:   5      # save
-    HLD:  2      # hold
+    HLD:  4      # hold
     QS:   3      # quality start  (6+ IP, ≤3 ER)
-    SO:   1      # strikeout
+    SO:   1.5      # strikeout
     ER:  -1      # earned run allowed
     R:    0      # unearned runs (set to -1 if your league uses R instead of ER)
     H:    0      # hit allowed (some leagues use -0.25)
-    HR:  -1      # home run allowed
-    BB:  -0.5    # walk issued
+    HR:   0      # home run allowed
+    BB:  -0.25    # walk issued
+    HBP: -0.25    # hit by pitch
       
 export:
   output_dir: "outputs"
@@ -94,7 +96,7 @@ auction_calculator:
   dollars: 260               # Total auction budget per team
   hitter_pitcher_split: 65   # % of budget allocated to hitters
   min_bid: 1                 # Minimum bid
-  bench: 1                   # Total bench/reserve spots
+  bench: 4                   # Total bench/reserve spots
 
   # Order in which FanGraphs prioritizes assigning players to roster slots.
   position_priority: [C, 2B, OF, SS, 3B, 1B]
