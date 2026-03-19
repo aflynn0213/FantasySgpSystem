@@ -285,4 +285,8 @@ def validate_export_columns(df: "pd.DataFrame", required_cols: list, label: str 
     if missing:
         where = f" ({label})" if label else ""
         raise ValueError(f"Export column(s) missing{where}: {missing}")
-
+    
+def get_auction_dollars_spread():
+    """Return the auction dollar spread for players."""
+    cfg = load_config()
+    return cfg.get("auction", {}).get("dollars", {}), cfg.get("auction", {}).get("hitter_pitcher_split", {})

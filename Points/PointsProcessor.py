@@ -13,7 +13,7 @@ import numpy as np
 from openpyxl import load_workbook
 from openpyxl.styles import Font
 
-from utils.common_utils import build_config_hitter_counts, get_pitcher_counts, get_position_priority, get_repo_root, is_gcs_enabled, upload_to_bucket, validate_export_columns
+from utils.common_utils import build_config_hitter_counts, get_auction_dollars_spread, get_pitcher_counts, get_position_priority, get_repo_root, is_gcs_enabled, upload_to_bucket, validate_export_columns
 
 
 class PointsProcessor:
@@ -43,18 +43,23 @@ class PointsProcessor:
         print("Preparing pitcher points data...")
         self.pitchers_df = self.prepare_data(temp_pitchers, "Pitcher")
 
-        cols_in_hitters_df = ["Name", "PlayerId", "Total_PTS", "RL", "VAR"]
-        sorter = "VAR"
-        if self.weeks < 26:
-            cols_in_hitters_df = cols_in_hitters_df[:3]
-            sorter = "Total_PTS"
+        self.hitters_df.sort(by="VAR", ascending=False, inplace=True)
+        self.pitchers_df.sort(by="VAR", ascending=False, inplace=True)
+        
+        self.hitters_df, self.pitchers_df = self.prepare_dollar_values(self.hitters_df, self.pitchers_df)
 
+        cols_in_combined_df = ["Name", "PlayerId", "Total_PTS", "RL", "VAR", "$"]
+        sorter = "$"
+        if self.weeks < 26:
+            cols_in_combined_df = cols_in_combined_df[:3] + cols_in_combined_df[4:]
+            sorter = "Total_PTS"
+        
         print("Combining data for final points rankings...")
         self.combined_df = (
             pd.concat(
                 [
-                    self.hitters_df[cols_in_hitters_df],
-                    self.pitchers_df[["Name", "PlayerId", "Total_PTS", "RL", "VAR"]],
+                    self.hitters_df[cols_in_combined_df],
+                    self.pitchers_df[cols_in_combined_df],
                 ]
             )
             .groupby(["Name", "PlayerId"], as_index=False)
@@ -71,6 +76,25 @@ class PointsProcessor:
             self.combined_df = self.combined_df.merge(adp_source[["PlayerId", "ADP"]], on="PlayerId", how="left")
 
         print("Points data prepared!")
+
+    def prepare_dollar_values(self, hitters, pitchers):
+        hitter_rostered_sum = hitters[hitters["VAR"] > 0]["VAR"].sum()
+        pitcher_rostered_sum = pitchers[pitchers["VAR"] > 0]["VAR"].sum()
+        total_rostered_sum = hitter_rostered_sum + pitcher_rostered_sum
+
+        teams, starters, relievers = get_pitcher_counts()
+        dollars, hitter_pitcher_split = get_auction_dollars_spread()
+
+        league_dollars = teams * dollars
+        hitter_subset = league_dollars * hitter_pitcher_split
+        pitcher_subset = league_dollars - hitter_subset
+        hitter_dollar_by_points = float(hitter_subset) / hitter_rostered_sum
+        pitcher_dollar_by_points = float(pitcher_subset) / pitcher_rostered_sum
+
+        hitters["$"] = hitters["VAR"] * hitter_dollar_by_points
+        pitchers["$"] = pitchers["VAR"] * pitcher_dollar_by_points
+        
+        return hitters,pitchers
 
     # ------------------------------------------------------------------
     # Data preparation
