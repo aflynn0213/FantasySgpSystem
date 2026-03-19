@@ -21,7 +21,7 @@ hitter_position_counts:
   OF: 5
   UTIL: 1
 
-position_priority: ["C", "2B", "OF", "SS", "3B", "1B", "DH"]
+position_priority: ["C", "2B", "SS", "3B", "OF",  "1B", "DH"]
 
 league_params:
   workbook_path: "included/leaguehistory.xlsx"
