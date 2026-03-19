@@ -2,8 +2,8 @@
 set -e  # Exit immediately if any command fails
 
 echo "[*] Refreshing projections..."
-python update_scripts/refresh_excel_projections.py
-python main.py -b atc_pre -p oopsy_pre -a atc
+#python update_scripts/refresh_excel_projections.py
+python main.py -b atc_pre -p oopsy_pre -a atc -sb
 python main.py -b atc_pre -p oopsy_pre -a atc -m points -sb
 
 #echo "[*] Starting Flask app..."
