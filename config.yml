@@ -4,11 +4,11 @@
 use_gcs: true
 
 defaults:
-  weeks_in_season: 26
-  num_teams: 12
-  num_bats: 13
-  num_starters: 8
-  num_relievers: 4
+  weeks_in_season:  26
+  num_teams:        12
+  num_bats:         13
+  num_starters:     8
+  num_relievers:    4
 
 hitter_position_counts:
   C:  1
