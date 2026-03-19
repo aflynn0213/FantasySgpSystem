@@ -5,10 +5,10 @@ use_gcs: true
 
 defaults:
   weeks_in_season: 26
-  num_teams: 10
-  num_bats: 10
-  num_starters: 10
-  num_relievers: 2
+  num_teams: 12
+  num_bats: 13
+  num_starters: 8
+  num_relievers: 4
 
 hitter_position_counts:
   C:  1
@@ -16,10 +16,10 @@ hitter_position_counts:
   2B: 1
   3B: 1
   SS: 1
-  MI: 0
-  CI: 0
-  OF: 3
-  UTIL: 2
+  MI: 1
+  CI: 1
+  OF: 5
+  UTIL: 1
 
 position_priority: ["C", "2B", "OF", "SS", "3B", "1B", "DH"]
 
@@ -94,7 +94,7 @@ export:
 # These drive the URL built dynamically in refresh_excel_projections.py.
 auction_calculator:
   dollars: 260               # Total auction budget per team
-  hitter_pitcher_split: 60   # % of budget allocated to hitters
+  hitter_pitcher_split: 65   # % of budget allocated to hitters
   min_bid: 1                 # Minimum bid
   bench: 4                   # Total bench/reserve spots
 
