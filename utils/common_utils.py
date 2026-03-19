@@ -289,4 +289,4 @@ def validate_export_columns(df: "pd.DataFrame", required_cols: list, label: str 
 def get_auction_dollars_spread():
     """Return the auction dollar spread for players."""
     cfg = load_config()
-    return cfg.get("auction", {}).get("dollars", {}), cfg.get("auction", {}).get("hitter_pitcher_split", {})
+    return cfg.get("auction_calculator", {}).get("dollars", 0), cfg.get("auction_calculator", {}).get("hitter_pitcher_split", 50)

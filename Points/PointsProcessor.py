@@ -43,9 +43,9 @@ class PointsProcessor:
         print("Preparing pitcher points data...")
         self.pitchers_df = self.prepare_data(temp_pitchers, "Pitcher")
 
-        self.hitters_df.sort(by="VAR", ascending=False, inplace=True)
-        self.pitchers_df.sort(by="VAR", ascending=False, inplace=True)
-        
+        self.hitters_df.sort_values(by="VAR", ascending=False, inplace=True)
+        self.pitchers_df.sort_values(by="VAR", ascending=False, inplace=True)
+
         self.hitters_df, self.pitchers_df = self.prepare_dollar_values(self.hitters_df, self.pitchers_df)
 
         cols_in_combined_df = ["Name", "PlayerId", "Total_PTS", "RL", "VAR", "$"]
@@ -80,16 +80,21 @@ class PointsProcessor:
     def prepare_dollar_values(self, hitters, pitchers):
         hitter_rostered_sum = hitters[hitters["VAR"] > 0]["VAR"].sum()
         pitcher_rostered_sum = pitchers[pitchers["VAR"] > 0]["VAR"].sum()
+        print(hitter_rostered_sum, pitcher_rostered_sum)
         total_rostered_sum = hitter_rostered_sum + pitcher_rostered_sum
 
         teams, starters, relievers = get_pitcher_counts()
-        dollars, hitter_pitcher_split = get_auction_dollars_spread()
+        dollars, split = get_auction_dollars_spread()
+        split /= 100
 
         league_dollars = teams * dollars
-        hitter_subset = league_dollars * hitter_pitcher_split
+        print("League dollars:", league_dollars)
+        hitter_subset = league_dollars * split
         pitcher_subset = league_dollars - hitter_subset
         hitter_dollar_by_points = float(hitter_subset) / hitter_rostered_sum
         pitcher_dollar_by_points = float(pitcher_subset) / pitcher_rostered_sum
+        print("hitter_dollar_by_points:", hitter_dollar_by_points)
+        print("pitcher_dollar_by_points:", pitcher_dollar_by_points)
 
         hitters["$"] = hitters["VAR"] * hitter_dollar_by_points
         pitchers["$"] = pitchers["VAR"] * pitcher_dollar_by_points
