@@ -1,10 +1,11 @@
 from typing import List, Dict, Optional
+import os
 import pandas as pd
 import numpy as np
 from Sgp.SgpBase import SgpBase
 from Sgp.params.SgpParams import SgpParams
 from Sgp.calc.ISgpCalculator import ISgpCalculator
-from utils.common_utils import parse_pitcher_config_categories
+from utils.common_utils import parse_pitcher_config_categories, get_repo_root
 
 class SgpPitchers(SgpBase):
     def __init__(self,

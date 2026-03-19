@@ -11,7 +11,7 @@ SERVICE_ACCOUNT="scheduler-invoker@fantasysgpsystem.iam.gserviceaccount.com"
 
 # === The Cloud Build trigger ID for the master branch trigger ===
 # Find this in Cloud Build → Triggers → click your master trigger → copy ID from the URL
-TRIGGER_ID="855acc26-326c-4537-aee9-13464172185e"
+TRIGGER_ID="b44036b2-8937-4162-a326-5d264748a4f7"
 
 # === Enable APIs ===
 gcloud services enable cloudscheduler.googleapis.com
@@ -26,7 +26,7 @@ if gcloud scheduler jobs describe $SCHEDULER_NAME --location=$REGION > /dev/null
     --location=$REGION \
     --schedule="$SCHEDULE" \
     --uri="https://cloudbuild.googleapis.com/v1/projects/$PROJECT_ID/triggers/$TRIGGER_ID:run" \
-    --message-body='{"branchName":"master"}' \
+    --message-body='{}' \
     --http-method=POST \
     --oauth-service-account-email=$SERVICE_ACCOUNT \
     --oauth-token-scope="https://www.googleapis.com/auth/cloud-platform"
@@ -36,7 +36,7 @@ else
     --location=$REGION \
     --schedule="$SCHEDULE" \
     --uri="https://cloudbuild.googleapis.com/v1/projects/$PROJECT_ID/triggers/$TRIGGER_ID:run" \
-    --message-body='{"branchName":"master"}' \
+    --message-body='{}' \
     --http-method=POST \
     --oauth-service-account-email=$SERVICE_ACCOUNT \
     --oauth-token-scope="https://www.googleapis.com/auth/cloud-platform"

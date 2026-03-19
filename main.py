@@ -2,7 +2,13 @@ import argparse
 from calendar import week
 import os
 from pathlib import Path
+import subprocess
 import yaml
+
+if os.environ.get("RUNNING_IN_DOCKER"):
+    os.chdir("/FantasySgpSystem")
+else:
+    os.chdir(subprocess.check_output(["git", "rev-parse", "--show-toplevel"], text=True).strip())
 
 from Sgp.loaders.ExcelProjectionLoader import ExcelProjectionLoader
 from Sgp.loaders.ExcelLeagueHistLoader import ExcelLeagueHistLoader
@@ -61,16 +67,18 @@ def build_and_run(hitter_proj, pitcher_proj, sb_included, ip_adj, weeks, repo_ro
                            sgp_calculator=pit_calc,
                            ip_adj=ip_adj)
 
-    processor = SgpProcessor(hitters, pitchers)
-    processor.export_sgp(sb_included)
+    processor = SgpProcessor(hitters, pitchers, ip_adj=ip_adj)
+    file_name = processor.export_sgp(sb_included)
+    print(f"[FINISHED] Exported SGP Results to {file_name}")
 
-    file_name_hit = export_sgp(processor.hitters_df, sb_included, hitter_proj.split('_')[1], "hitting")
-    file_name_pit = export_sgp(processor.pitchers_df, False, pitcher_proj.split('_')[1], "pitching")
-    file_name_combined = export_sgp(processor.combined_df, sb_included, processor.suffix, "combined")
+    if cfg.get("export", {}).get("separate_files", False):
+        file_name_hit = export_sgp(processor.hitters_df, sb_included, hitter_proj.split('_')[1], "hitting")
+        file_name_pit = export_sgp(processor.pitchers_df, False, pitcher_proj.split('_')[1], "pitching")
+        file_name_combined = export_sgp(processor.combined_df, sb_included, processor.suffix, "combined")
 
-    print(f"[FINISHED] Exported SGP Hitter Results to {file_name_hit}")
-    print(f"[FINISHED] Exported SGP Pitcher Results to {file_name_pit}")
-    print(f"[FINISHED] Exported SGP Combined Results to {file_name_combined}")
+        print(f"[FINISHED] Exported SGP Hitter Results to {file_name_hit}")
+        print(f"[FINISHED] Exported SGP Pitcher Results to {file_name_pit}")
+        print(f"[FINISHED] Exported SGP Combined Results to {file_name_combined}")
 
 
 def build_and_run_points(hitter_proj, pitcher_proj, sb_included, ip_adj, weeks, repo_root):
@@ -83,16 +91,18 @@ def build_and_run_points(hitter_proj, pitcher_proj, sb_included, ip_adj, weeks, 
     hitters = PointsHitters(data=hit_data, sb_included=sb_included)
     pitchers = PointsPitchers(data=pit_data, ip_adj=ip_adj)
 
-    processor = PointsProcessor(hitters, pitchers)
-    processor.export_points(sb_included)
+    processor = PointsProcessor(hitters, pitchers, ip_adj=ip_adj)
+    file_name = processor.export_points(sb_included)
+    print(f"[FINISHED] Exported Points Results to {file_name}")
 
-    file_name_hit = export_points(processor.hitters_df, sb_included, hitter_proj.split("_")[1], "hitting")
-    file_name_pit = export_points(processor.pitchers_df, False, pitcher_proj.split("_")[1], "pitching")
-    file_name_combined = export_points(processor.combined_df, sb_included, processor.suffix, "combined")
+    if cfg.get("export", {}).get("separate_files", False):
+        file_name_hit = export_points(processor.hitters_df, sb_included, hitter_proj.split("_")[1], "hitting")
+        file_name_pit = export_points(processor.pitchers_df, False, pitcher_proj.split("_")[1], "pitching")
+        file_name_combined = export_points(processor.combined_df, sb_included, processor.suffix, "combined")
 
-    print(f"[FINISHED] Exported Points Hitter Results to {file_name_hit}")
-    print(f"[FINISHED] Exported Points Pitcher Results to {file_name_pit}")
-    print(f"[FINISHED] Exported Points Combined Results to {file_name_combined}")
+        print(f"[FINISHED] Exported Points Hitter Results to {file_name_hit}")
+        print(f"[FINISHED] Exported Points Pitcher Results to {file_name_pit}")
+        print(f"[FINISHED] Exported Points Combined Results to {file_name_combined}")
 
 
 if __name__ == "__main__":

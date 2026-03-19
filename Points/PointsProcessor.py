@@ -13,7 +13,7 @@ import numpy as np
 from openpyxl import load_workbook
 from openpyxl.styles import Font
 
-from utils.common_utils import build_config_hitter_counts
+from utils.common_utils import build_config_hitter_counts, get_auction_dollars_spread, get_pitcher_counts, get_position_priority, get_repo_root, is_gcs_enabled, upload_to_bucket, validate_export_columns
 
 
 class PointsProcessor:
@@ -22,17 +22,19 @@ class PointsProcessor:
     Args:
         points_hitters:  Initialized PointsHitters instance.
         points_pitchers: Initialized PointsPitchers instance.
+        ip_adj:          Optional IP-adjustment system name; appended to the output filename.
     """
 
-    def __init__(self, points_hitters, points_pitchers) -> None:
+    def __init__(self, points_hitters, points_pitchers, ip_adj=None) -> None:
         print("Initializing PointsProcessor...")
         self.weeks = points_hitters.weeks
         temp_hitters = points_hitters.points_df.copy()
         temp_pitchers = points_pitchers.points_df.copy()
         temp_auc_hit = points_hitters.auc_calc.copy()
-        self.suffix = f"{points_hitters.proj}_{points_pitchers.proj}"
+        ip_adj_part = f"_ip{ip_adj}" if ip_adj else ""
+        self.suffix = f"{points_hitters.proj}_{points_pitchers.proj}{ip_adj_part}"
 
-        self.sufficient_pos_counts, self.position_mapping = build_config_hitter_counts()
+        self.sufficient_pos_counts, self.position_mapping, self.ind_slot_limits, self.comp_slot_limits = build_config_hitter_counts()
 
         print("Preparing hitter points data...")
         self.hitters_df = self.prepare_data(
@@ -41,18 +43,23 @@ class PointsProcessor:
         print("Preparing pitcher points data...")
         self.pitchers_df = self.prepare_data(temp_pitchers, "Pitcher")
 
-        cols_in_hitters_df = ["Name", "PlayerId", "Total_PTS", "RL", "VAR"]
-        sorter = "VAR"
-        if self.weeks < 26:
-            cols_in_hitters_df = cols_in_hitters_df[:3]
-            sorter = "Total_PTS"
+        self.hitters_df.sort_values(by="VAR", ascending=False, inplace=True)
+        self.pitchers_df.sort_values(by="VAR", ascending=False, inplace=True)
 
+        self.hitters_df, self.pitchers_df = self.prepare_dollar_values(self.hitters_df, self.pitchers_df)
+
+        cols_in_combined_df = ["Name", "PlayerId", "Total_PTS", "RL", "VAR", "$"]
+        sorter = "$"
+        if self.weeks < 26:
+            cols_in_combined_df = cols_in_combined_df[:3] + cols_in_combined_df[4:]
+            sorter = "Total_PTS"
+        
         print("Combining data for final points rankings...")
         self.combined_df = (
             pd.concat(
                 [
-                    self.hitters_df[cols_in_hitters_df],
-                    self.pitchers_df[["Name", "PlayerId", "Total_PTS", "RL", "VAR"]],
+                    self.hitters_df[cols_in_combined_df],
+                    self.pitchers_df[cols_in_combined_df],
                 ]
             )
             .groupby(["Name", "PlayerId"], as_index=False)
@@ -60,7 +67,39 @@ class PointsProcessor:
             .sort_values(by=sorter, ascending=False)
         )
 
+        # ADP must be merged back after groupby (summing it would be meaningless)
+        adp_source = pd.concat([
+            self.hitters_df[["Name", "PlayerId", "ADP"]] if "ADP" in self.hitters_df.columns else pd.DataFrame(columns=["Name", "PlayerId", "ADP"]),
+            self.pitchers_df[["Name", "PlayerId", "ADP"]] if "ADP" in self.pitchers_df.columns else pd.DataFrame(columns=["Name", "PlayerId", "ADP"]),
+        ]).drop_duplicates("PlayerId")
+        if not adp_source.empty and "ADP" in adp_source.columns:
+            self.combined_df = self.combined_df.merge(adp_source[["PlayerId", "ADP"]], on="PlayerId", how="left")
+
         print("Points data prepared!")
+
+    def prepare_dollar_values(self, hitters, pitchers):
+        hitter_rostered_sum = hitters[hitters["VAR"] > 0]["VAR"].sum()
+        pitcher_rostered_sum = pitchers[pitchers["VAR"] > 0]["VAR"].sum()
+        print(hitter_rostered_sum, pitcher_rostered_sum)
+        total_rostered_sum = hitter_rostered_sum + pitcher_rostered_sum
+
+        teams, starters, relievers = get_pitcher_counts()
+        dollars, split = get_auction_dollars_spread()
+        split /= 100
+
+        league_dollars = teams * dollars
+        print("League dollars:", league_dollars)
+        hitter_subset = league_dollars * split
+        pitcher_subset = league_dollars - hitter_subset
+        hitter_dollar_by_points = float(hitter_subset) / hitter_rostered_sum
+        pitcher_dollar_by_points = float(pitcher_subset) / pitcher_rostered_sum
+        print("hitter_dollar_by_points:", hitter_dollar_by_points)
+        print("pitcher_dollar_by_points:", pitcher_dollar_by_points)
+
+        hitters["$"] = hitters["VAR"] * hitter_dollar_by_points
+        pitchers["$"] = pitchers["VAR"] * pitcher_dollar_by_points
+        
+        return hitters,pitchers
 
     # ------------------------------------------------------------------
     # Data preparation
@@ -85,16 +124,10 @@ class PointsProcessor:
                 auc_calc = auc_calc.rename(columns={"POS": "ELIG"})
                 df = df.merge(auc_calc[["PlayerId", "ELIG"]], on="PlayerId", how="left")
 
-                df["POS"] = df["ELIG"].apply(self.determine_pos)
-
-                for pos in ["1B", "3B", "2B", "SS", "C", "OF", "DH"]:
-                    df[f"{pos}_count"] = (df["POS"] == pos).cumsum()
-
-                df["CI_count"] = df["1B_count"] + df["3B_count"]
-                df["MI_count"] = df["2B_count"] + df["SS_count"]
-                df["UTIL"] = self.assign_util(df)
-
-                df.to_excel("temp_players_pts.xlsx")
+                temp_path = os.path.join(get_repo_root(), 'temp_players_pts.xlsx')
+                df.to_excel(temp_path)
+                if is_gcs_enabled():
+                    upload_to_bucket(temp_path, 'debug/temp_players_pts.xlsx')
 
                 print("Computing replacement level (RL) for points hitters...")
                 df = self.compute_replacement_level(df)
@@ -102,12 +135,14 @@ class PointsProcessor:
         else:  # Pitcher
             df["Total_PTS"] = df[pts_cols].sum(axis=1)
             df["Starter"] = np.where(df["GS"] > 5, 1, 0)
+            df["POS"] = np.where(df["GS"] > 5, "SP", "RP")
 
             df = df.sort_values(by="Total_PTS", ascending=False).reset_index(drop=True)
 
             print("Computing replacement level for points pitchers...")
-            starter_rl = df[df["Starter"] == 1]["Total_PTS"].iloc[96]
-            reliever_rl = df[df["Starter"] == 0]["Total_PTS"].iloc[48]
+            num_teams, num_sp, num_rp = get_pitcher_counts()
+            starter_rl = df[df["Starter"] == 1]["Total_PTS"].iloc[num_teams * num_sp]
+            reliever_rl = df[df["Starter"] == 0]["Total_PTS"].iloc[num_teams * num_rp]
 
             df["RL"] = df.apply(
                 lambda row: starter_rl if row["Starter"] == 1 else reliever_rl, axis=1
@@ -117,89 +152,64 @@ class PointsProcessor:
         print(f"[✔] {player_type} points data preparation complete!")
         return df
 
-    # ------------------------------------------------------------------
-    # Position helpers (identical logic to SgpProcessor)
-    # ------------------------------------------------------------------
-
-    def determine_pos(self, elig):
-        if pd.isna(elig):
-            return "ERROR"
-        for pos in ["C", "2B", "OF", "SS", "3B", "1B", "DH"]:
-            if pos in elig:
-                return pos
-        return "ERROR"
-
-    def assign_util(self, df):
-        """Assign UTIL position based on rostered thresholds."""
-        print("Determining UTIL players (points)...")
-        util_list = []
-        util_count = 0
-
-        for _, row in df.iterrows():
-            limit = (
-                self.sufficient_pos_counts[
-                    self.position_mapping.get(row["POS"], "UTIL")
-                ]
-                + 1
-            )
-            if (
-                row["POS"] == "DH"
-                or (row["POS"] == "OF" and row["OF_count"] >= limit)
-                or (row["POS"] == "C" and row["C_count"] >= limit)
-                or (
-                    row["POS"] in ["1B", "3B"]
-                    and row["1B_count"] + row["3B_count"] >= limit
-                )
-                or (
-                    row["POS"] in ["2B", "SS"]
-                    and row["2B_count"] + row["SS_count"] >= limit
-                )
-            ):
-                util_count += 1
-                util_list.append(util_count)
-            else:
-                util_list.append("")
-
-        return util_list
-
     def compute_replacement_level(self, df):
         """Compute RL per position using the rostered universe — mirrors SgpProcessor."""
         print("Identifying rostered universe (points)...")
 
         def get_rostered_universe(df):
-            rostered = []
-            counts = {k: 0 for k in self.sufficient_pos_counts}
+            INDIVIDUAL  = list(self.ind_slot_limits.keys())
+            COMPOSITES  = list(self.comp_slot_limits.keys())
+            IND_TO_COMP = {ind: grp for ind, grp in self.position_mapping.items() if grp in self.comp_slot_limits}
+
+            ind_limits    = self.ind_slot_limits
+            comp_limits   = self.comp_slot_limits
+            util_limit    = self.sufficient_pos_counts.get('UTIL', 0)
+            priority_rank = {p: i for i, p in enumerate(get_position_priority())}
+
+            ind_counts  = {p: 0 for p in INDIVIDUAL}
+            comp_counts = {p: 0 for p in COMPOSITES}
+            util_count  = 0
+            rostered    = []
+
             df_sorted = df.sort_values(by="Total_PTS", ascending=False).reset_index(
                 drop=True
             )
 
             for _, row in df_sorted.iterrows():
+                raw  = [p.strip() for p in str(row["ELIG"]).split("/") if p.strip() in ind_limits]
+                elig = sorted(raw, key=lambda p: priority_rank.get(p, 99))
                 assigned = False
-                pos = self.position_mapping[row["POS"]]
-                needed = self.sufficient_pos_counts[pos]
 
-                if pos == "CI" and counts["CI"] < needed:
-                    counts["CI"] += 1
-                    rostered.append(row)
-                    assigned = True
-                elif pos == "MI" and counts["MI"] < needed:
-                    counts["MI"] += 1
-                    rostered.append(row)
-                    assigned = True
-                elif pos == "C" and counts["C"] < needed:
-                    counts["C"] += 1
-                    rostered.append(row)
-                    assigned = True
-                elif pos == "OF" and counts["OF"] < needed:
-                    counts["OF"] += 1
-                    rostered.append(row)
-                    assigned = True
+                # For each elig position in priority order:
+                #   1. try its individual slot
+                #   2. if that's full, try its composite flex slot
+                #   then move to the next elig position
+                for pos in elig:
+                    if ind_counts[pos] < ind_limits[pos]:
+                        ind_counts[pos] += 1
+                        r = row.copy()
+                        r["ASSIGNED_POS"] = pos
+                        rostered.append(r)
+                        assigned = True
+                        break
+                    comp = IND_TO_COMP.get(pos)
+                    if comp and comp_counts[comp] < comp_limits[comp]:
+                        comp_counts[comp] += 1
+                        r = row.copy()
+                        r["ASSIGNED_POS"] = f"{pos}({comp} flex)"
+                        rostered.append(r)
+                        assigned = True
+                        break
 
-                if not assigned and counts["UTIL"] < self.sufficient_pos_counts["UTIL"]:
-                    counts["UTIL"] += 1
-                    rostered.append(row)
+                if not assigned and util_count < util_limit:
+                    util_count += 1
+                    r = row.copy()
+                    r["ASSIGNED_POS"] = "UTIL"
+                    rostered.append(r)
 
-                if sum(counts.values()) >= 156:
+                ind_full  = all(ind_counts[p] >= ind_limits[p] for p in INDIVIDUAL if ind_limits[p] > 0)
+                comp_full = all(comp_counts[p] >= comp_limits[p] for p in COMPOSITES)
+                if ind_full and comp_full and util_count >= util_limit:
                     break
 
             return (
@@ -209,35 +219,56 @@ class PointsProcessor:
             )
 
         rostered_df = get_rostered_universe(df)
-        rostered_df.to_excel("rostered_pts.xlsx")
+
+        # Debug workbook: ALL players, rostered rows highlighted green, ASSIGNED_POS visible
+        debug_path   = os.path.join(get_repo_root(), "rostered_pts.xlsx")
+        rostered_ids = set(rostered_df["PlayerId"].astype(str))
+        debug_df = df.merge(
+            rostered_df[["PlayerId", "ASSIGNED_POS"]].drop_duplicates("PlayerId"),
+            on="PlayerId", how="left"
+        )
+        with pd.ExcelWriter(debug_path, engine="openpyxl") as writer:
+            debug_df.to_excel(writer, sheet_name="Players", index=False)
+            ws = writer.sheets["Players"]
+            from openpyxl.styles import PatternFill
+            green_fill = PatternFill(start_color="C6EFCE", end_color="C6EFCE", fill_type="solid")
+            pid_col = [c.value for c in ws[1]].index("PlayerId") + 1
+            for row in ws.iter_rows(min_row=2, max_row=ws.max_row):
+                if str(row[pid_col - 1].value) in rostered_ids:
+                    for cell in row:
+                        cell.fill = green_fill
+
+            # Bucket Counts sheet: cumulative fill per bucket in assignment order
+            fill_df = (
+                pd.get_dummies(rostered_df["ASSIGNED_POS"])
+                .cumsum()
+            )
+            fill_df.insert(0, "Name", rostered_df["Name"].values)
+            fill_df.insert(1, "ASSIGNED_POS", rostered_df["ASSIGNED_POS"].values)
+            fill_df.insert(2, "ELIG", rostered_df["ELIG"].values)
+            fill_df.to_excel(writer, sheet_name="Bucket Counts", index=False)
+
+        if is_gcs_enabled():
+            upload_to_bucket(debug_path, 'debug/rostered_pts.xlsx')
+
         print(f"Rostered universe identified ({len(rostered_df)} players).")
 
         print("Finding worst rostered / best non-rostered per position...")
         worst_rostered = {}
         for pos in ["1B", "3B", "2B", "SS", "C", "OF"]:
-            eligible_players = rostered_df[
-                rostered_df["ELIG"].str.contains(pos, na=False)
-            ].copy()
-
-            def is_available(row, pos=pos):
-                if row["POS"] == pos:
-                    return True
-                mapped_pos = self.position_mapping.get(row["POS"], row["POS"])
-                if mapped_pos != "UTIL" and row[f"{mapped_pos}_count"] <= self.sufficient_pos_counts.get(
-                    mapped_pos, float("inf")
-                ):
-                    return False
-                return True
-
-            eligible_players = eligible_players[
-                eligible_players.apply(is_available, axis=1)
+            at_pos = rostered_df[
+                rostered_df["ASSIGNED_POS"].str.startswith(pos, na=False) |
+                (
+                    (rostered_df["ASSIGNED_POS"] == "UTIL") &
+                    rostered_df["ELIG"].str.contains(pos, na=False)
+                )
             ]
-            worst_player = eligible_players.nsmallest(1, "Total_PTS")
+            if at_pos.empty:
+                print(f"[WARN] No rostered players found for {pos}")
+                continue
+            worst_player = at_pos.nsmallest(1, "Total_PTS")
             worst_rostered[pos] = worst_player["Total_PTS"].values[0]
-            print(
-                f"[DEBUG] Worst rostered {pos}: {worst_player['Name'].values[0]} "
-                f"(PTS: {worst_rostered[pos]:.1f})"
-            )
+            print(f"[DEBUG] Worst rostered {pos}: {worst_player['Name'].values[0]} (PTS: {worst_rostered[pos]:.1f})")
 
         best_replacements = {}
         for pos in worst_rostered:
@@ -269,6 +300,7 @@ class PointsProcessor:
             (v for v in best_replacements.values() if v != float("-inf")), default=float("-inf")
         )
         rl_values["DH"] = (max_best + max_worst) / 2
+        print(f"[DEBUG] DH RL penalized to: {rl_values['DH']} (Max of all worst and best non-rostered)")
 
         df["RL"] = df["ELIG"].apply(
             lambda elig: min(
@@ -284,26 +316,38 @@ class PointsProcessor:
     # Export
     # ------------------------------------------------------------------
 
-    def export_points(self, sb: bool) -> None:
+    def export_points(self, sb: bool) -> str:
         """Write a combined Excel workbook with Hitters / Pitchers / Combined sheets."""
         print("Exporting Points Results...")
 
-        SAVE_FOLDER = os.path.join(os.getcwd(), "results")
+        SAVE_FOLDER = os.path.join(get_repo_root(), "results")
         os.makedirs(SAVE_FOLDER, exist_ok=True)
 
         sb_string = "_sb_included" if sb else ""
-        file_name = f"results/Points_Results_{self.suffix}{sb_string}.xlsx"
+        base_name = f"Points_Results_{self.suffix}{sb_string}.xlsx"
+        file_name = os.path.join(SAVE_FOLDER, base_name)
 
         # Dynamic PTS_ columns for each tab
         hit_pts_cols = [c for c in self.hitters_df.columns if c.startswith("PTS_")]
         pit_pts_cols = [c for c in self.pitchers_df.columns if c.startswith("PTS_")]
 
         hit_export = ["Name", "PlayerId", "PA"] + hit_pts_cols + ["Total_PTS_wSB", "Total_PTS", "RL", "VAR"]
-        pit_export = ["Name", "PlayerId", "IP"] + pit_pts_cols + ["Total_PTS", "RL", "VAR"]
+        pit_export = ["Name", "PlayerId", "POS", "GS", "IP"] + pit_pts_cols + ["Total_PTS", "RL", "VAR"]
+
+        # Insert optional columns right after PlayerId when present
+        if "ADP" in self.hitters_df.columns:
+            hit_export.insert(2, "ADP")
+        if "ADP" in self.pitchers_df.columns:
+            pit_export.insert(2, "ADP")
+        if "ELIG" in self.hitters_df.columns:
+            hit_export.insert(hit_export.index("PA"), "ELIG")
 
         # Drop cols that don't exist yet (in-season shortcut)
         hit_export = [c for c in hit_export if c in self.hitters_df.columns]
         pit_export = [c for c in pit_export if c in self.pitchers_df.columns]
+
+        validate_export_columns(self.hitters_df, hit_export, "Hitters Points")
+        validate_export_columns(self.pitchers_df, pit_export, "Pitchers Points")
 
         with pd.ExcelWriter(file_name) as writer:
             self.hitters_df[hit_export].to_excel(writer, sheet_name="Hitters", index=False)
@@ -327,4 +371,11 @@ class PointsProcessor:
                     cell.font = blue_underlined
 
         wb.save(file_name)
+
+        if is_gcs_enabled():
+            gcs_blob_path = f"results/{base_name}"
+            upload_to_bucket(file_name, gcs_blob_path)
+            print(f"[GCS] Uploaded {base_name}")
+
         print(f"Exported Points Results to {file_name}")
+        return base_name

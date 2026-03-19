@@ -37,8 +37,11 @@ class SgpBase(ABC):
         self.sgp_df: pd.DataFrame = pd.DataFrame()
 
     def _finalize_sgp_df(self) -> None:
-        """Attach Name/PlayerId columns to sgp_df and use them as the index."""
+        """Attach Name/PlayerId (and ADP when available) to sgp_df, then index."""
         self.sgp_df[['Name', 'PlayerId']] = self.stats[['Name', 'PlayerId']]
+        if 'ADP' in self.proj_read.columns:
+            adp_map = self.proj_read.drop_duplicates('PlayerId').set_index('PlayerId')['ADP']
+            self.sgp_df['ADP'] = self.stats['PlayerId'].map(adp_map).values
         self.sgp_df.set_index(['Name', 'PlayerId'], inplace=True)
 
     @abstractmethod

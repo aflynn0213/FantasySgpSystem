@@ -14,10 +14,11 @@ ip_adj stat scaling rules (consistent with SgpPitchers):
     IP, TBF             -> replaced directly with new values
 """
 from typing import Dict, Optional
+import os
 import pandas as pd
 
 from Points.PointsCalculator import PointsCalculator
-from utils.common_utils import parse_pitcher_points_config
+from utils.common_utils import parse_pitcher_points_config, get_repo_root
 
 
 class PointsPitchers:
@@ -72,8 +73,11 @@ class PointsPitchers:
         self.points_df["Total_PTS"] = self.points_df.filter(like="PTS_").sum(axis=1)
 
     def _finalize(self) -> None:
-        """Attach Name/PlayerId and set them as a MultiIndex — mirrors SgpBase._finalize_sgp_df."""
+        """Attach Name/PlayerId (and ADP when available), then set MultiIndex."""
         self.points_df[["Name", "PlayerId"]] = self.stats[["Name", "PlayerId"]].values
+        if "ADP" in self.proj_read.columns:
+            adp_map = self.proj_read.drop_duplicates("PlayerId").set_index("PlayerId")["ADP"]
+            self.points_df["ADP"] = self.stats["PlayerId"].map(adp_map).values
         self.points_df.set_index(["Name", "PlayerId"], inplace=True)
 
     def __adjust_playing_time(self, ip_adj: str) -> None:
@@ -92,7 +96,7 @@ class PointsPitchers:
         Simple TBF-scale  (HR, R,HBP)           -> new_TBF / old_TBF × stat
         """
         play_time_df = pd.read_excel(
-            f"projections/fangraphs_pitching_{ip_adj}.xlsx", sheet_name=0
+            f'projections/fangraphs_pitching_{ip_adj}.xlsx', sheet_name=0
         )
         play_time_df["PlayerId"] = play_time_df["PlayerId"].astype(str)
         play_time_df = play_time_df.rename(columns={"IP": "new_IP", "TBF": "new_TBF"})
