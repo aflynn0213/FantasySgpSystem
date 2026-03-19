@@ -96,7 +96,7 @@ auction_calculator:
   dollars: 260               # Total auction budget per team
   hitter_pitcher_split: 65   # % of budget allocated to hitters
   min_bid: 1                 # Minimum bid
-  bench: 4                   # Total bench/reserve spots
+  bench: 1                   # Total bench/reserve spots
 
   # Order in which FanGraphs prioritizes assigning players to roster slots.
   position_priority: [C, 2B, OF, SS, 3B, 1B]
