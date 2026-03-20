@@ -99,4 +99,4 @@ auction_calculator:
   bench: 1                   # Total bench/reserve spots
 
   # Order in which FanGraphs prioritizes assigning players to roster slots.
-  position_priority: [C, 2B, OF, SS, 3B, 1B]
+  position_priority: [C, 2B, SS, 3B, OF, 1B]
