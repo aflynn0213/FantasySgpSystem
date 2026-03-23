@@ -7,8 +7,8 @@ defaults:
   weeks_in_season:  26
   num_teams:        10
   num_bats:         10
-  num_starters:     9
-  num_relievers:    3
+  num_starters:     10
+  num_relievers:    2
 
 hitter_position_counts:
   C:  1
@@ -94,7 +94,7 @@ export:
 # These drive the URL built dynamically in refresh_excel_projections.py.
 auction_calculator:
   dollars: 260               # Total auction budget per team
-  hitter_pitcher_split: 65   # % of budget allocated to hitters
+  hitter_pitcher_split: 60   # % of budget allocated to hitters
   min_bid: 1                 # Minimum bid
   bench: 4                   # Total bench/reserve spots
 
