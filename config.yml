@@ -76,13 +76,13 @@ points:
     SV:   5      # save
     HLD:  4      # hold
     QS:   3      # quality start  (6+ IP, ≤3 ER)
-    SO:   1.5      # strikeout
+    SO:   1.5    # strikeout
     ER:  -1      # earned run allowed
     R:    0      # unearned runs (set to -1 if your league uses R instead of ER)
     H:    0      # hit allowed (some leagues use -0.25)
     HR:   0      # home run allowed
-    BB:  -0.25    # walk issued
-    HBP: -0.25    # hit by pitch
+    BB:  -0.25   # walk issued
+    HBP: -0.25   # hit by pitch
       
 export:
   output_dir: "outputs"
