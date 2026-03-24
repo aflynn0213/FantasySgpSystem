@@ -94,7 +94,7 @@ export:
 # These drive the URL built dynamically in refresh_excel_projections.py.
 auction_calculator:
   dollars: 260               # Total auction budget per team
-  hitter_pitcher_split: 55   # % of budget allocated to hitters
+  hitter_pitcher_split: 60   # % of budget allocated to hitters
   min_bid: 1                 # Minimum bid
   bench: 4                   # Total bench/reserve spots
 
