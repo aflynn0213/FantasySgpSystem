@@ -5,10 +5,10 @@ use_gcs: true
 
 defaults:
   weeks_in_season:  26
-  num_teams:        12
-  num_bats:         13
-  num_starters:     8
-  num_relievers:    4
+  num_teams:        10
+  num_bats:         10
+  num_starters:     10
+  num_relievers:    2
 
 hitter_position_counts:
   C:  1
@@ -16,10 +16,10 @@ hitter_position_counts:
   2B: 1
   3B: 1
   SS: 1
-  MI: 1
-  CI: 1
-  OF: 5
-  UTIL: 1
+  MI: 0
+  CI: 0
+  OF: 3
+  UTIL: 2
 
 position_priority: ["C", "2B", "SS", "3B", "OF", "1B", "DH"]
 
@@ -76,13 +76,13 @@ points:
     SV:   5      # save
     HLD:  4      # hold
     QS:   3      # quality start  (6+ IP, ≤3 ER)
-    SO:   1.5      # strikeout
+    SO:   1.5    # strikeout
     ER:  -1      # earned run allowed
     R:    0      # unearned runs (set to -1 if your league uses R instead of ER)
     H:    0      # hit allowed (some leagues use -0.25)
     HR:   0      # home run allowed
-    BB:  -0.25    # walk issued
-    HBP: -0.25    # hit by pitch
+    BB:  -0.25   # walk issued
+    HBP: -0.25   # hit by pitch
       
 export:
   output_dir: "outputs"
@@ -94,7 +94,7 @@ export:
 # These drive the URL built dynamically in refresh_excel_projections.py.
 auction_calculator:
   dollars: 260               # Total auction budget per team
-  hitter_pitcher_split: 65   # % of budget allocated to hitters
+  hitter_pitcher_split: 57   # % of budget allocated to hitters
   min_bid: 1                 # Minimum bid
   bench: 4                   # Total bench/reserve spots
 
