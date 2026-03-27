@@ -8,31 +8,23 @@ ENV RUNNING_IN_DOCKER=true \
     PYTHONPATH=/FantasySgpSystem
 
 # Install dependencies for Chrome & Selenium
-# Chrome + ChromeDriver setup
 RUN apt-get update && apt-get install -y --no-install-recommends \
     wget curl unzip gnupg ca-certificates fonts-liberation \
     libappindicator3-1 libasound2 libgbm-dev libgtk-3-0 \
     libnss3 lsb-release xdg-utils jq \
- && wget -q https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb \
- && dpkg -i google-chrome-stable_current_amd64.deb || apt-get -fy install \
- && rm google-chrome-stable_current_amd64.deb
+ && rm -rf /var/lib/apt/lists/*
 
-# Match ChromeDriver to installed Chrome
-RUN bash -c '\
-  set -e; \
-  CHROME_VERSION=$(google-chrome --version | grep -oP "[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+"); \
-  echo "Detected Chrome version: $CHROME_VERSION"; \
-  DRIVER_URL=$(curl -s https://googlechromelabs.github.io/chrome-for-testing/last-known-good-versions-with-downloads.json \
-    | jq -r ".channels.Stable.downloads.chromedriver[] | select(.platform == \"linux64\") | .url"); \
-  echo "Resolved ChromeDriver download URL: $DRIVER_URL"; \
-  curl -sSL "$DRIVER_URL" -o chromedriver.zip; \
-  unzip chromedriver.zip; \
-  mv chromedriver-linux64/chromedriver /usr/local/bin/chromedriver; \
-  chmod +x /usr/local/bin/chromedriver; \
-  rm -rf chromedriver.zip chromedriver-linux64; \
-  apt-get clean; \
-  rm -rf /var/lib/apt/lists/* \
-'
+# Install pinned Chrome
+RUN wget -q https://dl.google.com/linux/direct/google-chrome-stable_146.0.7680.164-1_amd64.deb \
+ && dpkg -i google-chrome-stable_146.0.7680.164-1_amd64.deb || apt-get -fy install \
+ && rm google-chrome-stable_146.0.7680.164-1_amd64.deb
+
+# Install pinned ChromeDriver
+RUN wget -q https://edgedl.me.gvt1.com/edgedl/chrome/chrome-for-testing/146.0.7680.165/linux64/chromedriver-linux64.zip \
+ && unzip chromedriver-linux64.zip \
+ && mv chromedriver /usr/local/bin/chromedriver \
+ && chmod +x /usr/local/bin/chromedriver \
+ && rm -rf chromedriver-linux64.zip
 
     
 # Copy the requirements file into the container
