@@ -43,7 +43,13 @@ EXPOSE 5000
 
 RUN mkdir -p /downloads
 
+COPY job_entrypoint.sh ./job_entrypoint.sh
+RUN sed -i 's/\r$//' ./job_entrypoint.sh && chmod +x ./job_entrypoint.sh
+
 COPY preseason_entrypoint.sh ./preseason_entrypoint.sh
 RUN sed -i 's/\r$//' ./preseason_entrypoint.sh && chmod +x ./preseason_entrypoint.sh
-ENTRYPOINT ["./preseason_entrypoint.sh"]
+
+COPY inseason_entrypoint.sh ./inseason_entrypoint.sh
+RUN sed -i 's/\r$//' ./inseason_entrypoint.sh && chmod +x ./inseason_entrypoint.sh
+ENTRYPOINT ["./job_entrypoint.sh"]
 
