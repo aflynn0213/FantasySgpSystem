@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1.7
 # Use an official Python image as base
 FROM python:3.12-slim
 
@@ -5,19 +6,20 @@ FROM python:3.12-slim
 WORKDIR /FantasySgpSystem
 
 ENV RUNNING_IN_DOCKER=true \
-    PYTHONPATH=/FantasySgpSystem
+    PYTHONPATH=/FantasySgpSystem \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
 
 ARG CHROME_VERSION=146.0.7680.165
 ARG CHROME_DOWNLOAD_BASE=https://storage.googleapis.com/chrome-for-testing-public
 
-# Install dependencies for Chrome & Selenium
+# Install only the OS packages needed for Chrome + Selenium + Python wheels.
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    wget curl unzip ca-certificates fonts-liberation \
+    wget ca-certificates unzip fonts-liberation \
     libappindicator3-1 libasound2 libgbm-dev libgtk-3-0 \
     libnss3 xdg-utils \
  && rm -rf /var/lib/apt/lists/*
 
-# Install a matched Chrome for Testing browser and driver pair.
+# Download and install the Chrome + ChromeDriver pair.
 RUN set -eux \
  && wget -q -O /tmp/chrome-linux64.zip ${CHROME_DOWNLOAD_BASE}/${CHROME_VERSION}/linux64/chrome-linux64.zip \
  && wget -q -O /tmp/chromedriver-linux64.zip ${CHROME_DOWNLOAD_BASE}/${CHROME_VERSION}/linux64/chromedriver-linux64.zip \
@@ -29,21 +31,23 @@ RUN set -eux \
  && chmod +x /usr/bin/google-chrome /usr/local/bin/google-chrome /usr/local/bin/chromedriver \
  && rm -rf /tmp/chrome-linux64.zip /tmp/chromedriver-linux64.zip /opt/chromedriver-linux64
 
-    
-# Copy the requirements file into the container
-COPY requirements.txt .
+# Copy dependency manifest first to maximize Docker cache reuse.
+COPY requirements.txt ./requirements.txt
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install --requirement requirements.txt
 
-# Install dependencies
-RUN pip install --no-cache-dir -r requirements.txt
-
-# Copy import files
+# Copy the application code after dependencies are installed.
 COPY . .
-# Expose the port Flask runs on
-EXPOSE 5000
 
 RUN mkdir -p /downloads
 
 COPY preseason_entrypoint.sh ./preseason_entrypoint.sh
 RUN sed -i 's/\r$//' ./preseason_entrypoint.sh && chmod +x ./preseason_entrypoint.sh
-ENTRYPOINT ["./preseason_entrypoint.sh"]
+
+COPY inseason_entrypoint.sh ./inseason_entrypoint.sh
+RUN sed -i 's/\r$//' ./inseason_entrypoint.sh && chmod +x ./inseason_entrypoint.sh
+
+# No default entrypoint: job invocation is selected separately by the Cloud Run config.
+# Expose the port Flask runs on
+EXPOSE 5000
 
